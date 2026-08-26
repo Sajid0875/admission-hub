@@ -1,13 +1,13 @@
-# WhiteDavid23 Partner Portal
+# Admission Hub
 
-Development repository for the WhiteDavid23 Partner Portal / CRM System.
+Development repository for Admission Hub, a partner admissions CRM and reporting platform.
 
 The planned product is a responsive, multi-tenant admissions CRM for super admins, partner admins, counselors, and support users. Its scope includes lead and follow-up management, admissions, courses, marketing assets, commissions, reporting, notifications, and audit logs.
 
 ## Project documents
 
-- [Developer Handover Pack](docs/WhiteDavid23_Developer_Handover_Pack.pdf)
-- [Software Requirements Specification](docs/WhiteDavid23_Partner_Portal_SRS.pdf)
+- [Developer Handover Pack](docs/developer-handover-pack.pdf)
+- [Software Requirements Specification](docs/software-requirements-specification.pdf)
 
 ## Suggested MVP
 
