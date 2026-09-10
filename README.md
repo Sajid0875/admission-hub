@@ -28,6 +28,6 @@ The planned product is a responsive, multi-tenant admissions CRM for super admin
 
 ## Reference
 
-Link: https://strata-void-73605916.figma.site/
+`Link`: https://strata-void-73605916.figma.site/
 
 Implementation has not started yet. The documents in `docs/` are the source of truth for product scope and acceptance criteria.
