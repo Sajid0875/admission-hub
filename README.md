@@ -26,4 +26,8 @@ The planned product is a responsive, multi-tenant admissions CRM for super admin
 - Database: PostgreSQL or MongoDB
 - Authentication: JWT with role-based access control
 
+## Reference
+
+Link: https://strata-void-73605916.figma.site/
+
 Implementation has not started yet. The documents in `docs/` are the source of truth for product scope and acceptance criteria.
