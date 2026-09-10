@@ -2,7 +2,7 @@
 
 Development repository for Admission Hub, a partner admissions CRM and reporting platform.
 
-The planned product is a responsive, multi-tenant admissions CRM for `super admins`, `partner admins`, `counselors`, and `support` users. Its scope includes lead and `follow-up management`, `admissions`, `courses`, `marketing assets`, `commissions`, `reporting`, `notifications`, and `audit logs`.
+The planned product is a responsive, multi-tenant admissions CRM for `super admins`, `partner admins`, `counselors`, and `support` users. Its scope includes `lead` and `follow-up management`, `admissions`, `courses`, `marketing assets`, `commissions`, `reporting`, `notifications`, and `audit logs`.
 
 ## Project documents
 
