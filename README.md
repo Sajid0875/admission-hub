@@ -6,6 +6,7 @@ The planned product is a responsive, multi-tenant admissions CRM for super admin
 
 ## Project documents
 
+- [Partner Portal](docs/WhiteDavid23_Academy_Project_Keystone.pdf)
 - [Developer Handover Pack](docs/developer-handover-pack.pdf)
 - [Software Requirements Specification](docs/software-requirements-specification.pdf)
 
