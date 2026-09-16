@@ -2,7 +2,7 @@
 
 ## Backend Development Logs
 
-## Start Date: Saturday, 13 September 2026
+## Start Date: 13 September 2026
 
 ## End Date: --/--/----
 
@@ -25,118 +25,131 @@
 
 ---
 
-## Technical Stack Reference (`docs/documentations.md`)
-- **Backend Framework**: Node.js + Express.js (`https://expressjs.com/`)
-- **Language**: TypeScript (`https://www.typescriptlang.org/`)
-- **Module System**: ESM (`"type": "module"`) + `moduleResolution: NodeNext`
-- **Database ORM**: Prisma ORM (`https://www.prisma.io/docs/`)
-- **Database Engine**: PostgreSQL (`https://www.postgresql.org/docs/`)
-- **Authentication**: JWT Access & Refresh Tokens (`https://jwt.io/`)
-- **Password Hashing**: bcryptjs (`https://www.npmjs.com/package/bcryptjs`)
-- **Validation**: Zod (`https://zod.dev/`)
-- **Logging**: Pino + pino-pretty (`https://getpino.io/`)
-- **Security Protocols**: OWASP Top 10 & API Security (`https://owasp.org/`)
-- **Testing**: Vitest (`https://vitest.dev/`)
-- **Dev Runner**: tsx (`https://tsx.is/`)
+## Technical Stack Reference
+- **Backend Framework**: Node.js + Express.js
+- **Language**: TypeScript (ESM, `moduleResolution: NodeNext`)
+- **Database ORM**: Prisma ORM
+- **Database Engine**: PostgreSQL (18)
+- **Authentication**: JWT Access Tokens + (planned) Refresh Tokens
+- **Password Hashing**: bcryptjs
+- **Validation**: Zod
+- **Logging**: Pino + pino-pretty
+- **Security**: Helmet, CORS, OWASP guidance
+- **Testing**: Vitest
+- **Dev Runner**: tsx
+- **Environment**: Ubuntu + bash (was Windows + PowerShell earlier)
 
 ---
 
 ## Milestone Progress Checklist
 
-### Phase 0: Workspace Reset & Repository Baseline
-- [x] Deleted old `backend/` folder and reset to zero for a clean start
-- [x] Confirmed `docs/` lives at repo root (`admission-hub/docs/`), NOT inside `backend/`
-- [x] Discovered and fixed `.gitignore` — removed `docs` exclusion so documentation is tracked
-- [x] Restored deleted `README.md` via `git restore`
-- [x] Committed and pushed to `dev_Sohaim`
-- [x] Commit: `7777443 chore(repo): baseline gitignore, readme, and docs`
+#### Phase 0 — Workspace Reset & Repository Baseline
+- [x] Reset `backend/` to zero
+- [x] Confirmed `docs/` lives at repo root (`admission-hub/docs/`), not inside `backend/`
+- [x] Fixed root `.gitignore` (removed `docs` exclusion)
+- [x] Restored deleted `README.md`
+- [x] Committed + pushed: `7777443 chore(repo): baseline gitignore, readme, and docs`
 
-### Phase 1: Backend Scaffold
-- [x] `backend/package.json` — deps (express, prisma, @prisma/client, zod, jsonwebtoken, bcryptjs, helmet, cors, pino, pino-pretty, dotenv) + dev deps (typescript, tsx, vitest, @types/*) + scripts (dev, build, start, typecheck, prisma:*, test)
-- [x] `backend/tsconfig.json` — strict mode, NodeNext ESM, path alias `@/*`
-- [x] `backend/.gitignore` — ignores node_modules, .env, dist, coverage, logs
-- [x] `backend/.env.example` — template for all required env vars
-- [x] `backend/.env` — real DATABASE_URL + JWT_SECRET (gitignored)
-- [x] `backend/prisma/schema.prisma` — enums and models for full CRM domain
-- [x] Ran `npm install` — 199 packages installed
-- [x] Ran `npx prisma validate` — schema valid
-- [x] Ran `npx prisma generate` — Prisma Client v5.22.0 generated
-- [x] Created local PostgreSQL database `admission_hub`
-- [x] Committed and pushed to `dev_Sohaim`
-- [x] Commit: `42b95ff chore(backend): scaffold package, tsconfig, env template, prisma schema`
+#### Phase 1 — Backend Scaffold
+- [x] `backend/package.json` — Express, Prisma, Zod, JWT, bcryptjs, helmet, cors, pino, pino-pretty, dotenv + TypeScript, tsx, vitest, @types/*
+- [x] `backend/tsconfig.json` — strict, NodeNext ESM, path alias `@/*`
+- [x] `backend/.gitignore`
+- [x] `backend/.env.example` (committed)
+- [x] `backend/.env` (gitignored, real DATABASE_URL + JWT_SECRET)
+- [x] `backend/prisma/schema.prisma` — enums + models for full CRM domain
+- [x] `npm install` — 199 packages
+- [x] `prisma validate` + `prisma generate` — client v5.22.0
+- [x] PostgreSQL DB `admission_hub` created locally
+- [x] Committed + pushed: `42b95ff chore(backend): scaffold package, tsconfig, env template, prisma schema`
 
-### Phase 2: App Bootstrap (files created; boot + commit pending)
-- [x] `backend/src/shared/errors/AppError.ts` — custom error class + factories (BadRequest, Unauthorized, Forbidden, NotFound, Conflict, Unprocessable, Internal)
-- [x] `backend/src/config/env.ts` — Zod-validated env loader (fails fast on missing/malformed vars, frozen typed config)
-- [x] `backend/src/config/logger.ts` — Pino logger (pretty in dev, JSON in prod, redacts secrets)
-- [x] `backend/src/config/prisma.ts` — Prisma client singleton (dev-safe via `globalThis`, routes logs through Pino)
-- [x] `backend/src/middleware/error.middleware.ts` — global error handler + `asyncHandler` wrapper
-- [x] `backend/src/middleware/notFound.middleware.ts` — 404 handler
-- [x] `backend/src/app.ts` — Express app assembly (helmet, cors, parsers, request ID, dev logging, `/health`, 404, error handler)
-- [ ] `backend/src/server.ts` — bootstrap + listen + graceful shutdown
-- [ ] `backend/src/types/express.d.ts` — extend Express `Request` with `id: string`
-- [ ] Boot verification — `GET /health` returns 200
-- [ ] Commit + push Phase 2
+#### Phase 2 — App Bootstrap
+Files created in `backend/src/`:
+- [x] `shared/errors/AppError.ts`
+- [x] `config/env.ts` — Zod-validated env loader
+- [x] `config/logger.ts` — Pino
+- [x] `config/prisma.ts` — Prisma client singleton
+- [x] `middleware/error.middleware.ts`
+- [x] `middleware/notFound.middleware.ts`
+- [x] `app.ts` — Express app assembly
+- [x] `server.ts` — bootstrap + listen + graceful shutdown
+- [x] `types/express.d.ts` — extends Express `Request` with `id`
+- [x] Boot verified — `GET /health` returns 200
+- [x] Committed + pushed: `d436eb2 feat(backend): server bootstrap + prisma event typing + express request augmentation`
 
-### Phase 2 Fixes Applied
-- Fixed Windows em-dash encoding issue in `AppError.ts` comments (em-dash → hyphen)
+#### Fixes Applied
+- Fixed em-dash encoding issue in `AppError.ts` (em-dash → hyphen)
 - Fixed typo `passwordsm` → `passwords,` in `logger.ts`
 - Fixed typo `middlewre` → `middleware` in `error.middleware.ts`
-- Fixed `.env` `DATABASE_URL` — special characters in password require URL encoding (`!` → `%21`, `@` → `%40`)
+- Fixed `.env` `DATABASE_URL` — special chars URL-encoded (`!` → `%21`, `@` → `%40`)
+- Fixed Prisma event typing (`$on('query' as never, ...)` cast) to pass strict TS
 
-### Environment Notes
-- Started on Windows 10 Home + PowerShell
-- Switched to Ubuntu + bash (current)
-- Prisma verified on Linux: `debian-openssl-3.0.x`, `libquery_engine-debian-openssl-3.0.x.so.node`
+#### Environment Notes
+- Started on Windows + PowerShell; switched to Ubuntu + bash
 - Node v24.21.0, npm 11.19.0
-- `.gitattributes` added to enforce LF line endings across the repo
+- PostgreSQL 18 (`postgresql@18-main`) — service must be started via `sudo systemctl start postgresql`
+- Reset `postgres` password to match `.env`
+- Wiped Windows `node_modules`, reinstalled on Linux (esbuild native binary mismatch)
+- `.gitattributes` added to enforce LF line endings
 
-### Git History (Day 1 close)
+#### Phase 3A — Initial Prisma Migration
+- [x] Confirmed Postgres `18-main` running, `admission_hub` DB exists
+- [x] Ran `./node_modules/.bin/prisma migrate dev --name init`
+- [x] Migration `20260916211224_init` created and applied
+- [x] 18 tables created: partners, roles, permissions, role_permissions, users, courses, leads, lead_activities, follow_ups, admissions, payments, marketing_assets, commission_rules, commission_records, notifications, audit_logs, refresh_tokens, `_prisma_migrations`
+- [ ] Commit migration files
+- [ ] Phase 3B — Seed data (roles, permissions, super admin)
+
+#### Git History (as of Day 5)
 - Branch: `dev_Sohaim`
-- HEAD = `origin/dev_Sohaim` = `b8c9d8e` (in sync, nothing to push)
-- Chain:
-  - `b8c9d8e` — Merge branch 'dev_Sohaim' of https://github.com/Sajid0875/admission-hub into dev_Sohaim
+- HEAD = `origin/dev_Sohaim` = `a82a609`
+- Recent commits:
+  - `a82a609` — docs(myLogs): accurate day 1 log with real commit hashes and ubuntu environment
+  - `d436eb2` — feat(backend): server bootstrap + prisma event typing + express request augmentation
+  - `b8c9d8e` — Merge branch 'dev_Sohaim' (remote README update)
   - `54fb5bd` — Update README.md
   - `2d4f4a6` — feat: all corrected config changes implemented from src
-  - `e268fc1` — chore(repo): enforce LF line endings across the repository
+  - `e268fc1` — chore(repo): enforce LF line endings
   - `42b95ff` — chore(backend): scaffold package, tsconfig, env template, prisma schema
   - `7777443` — chore(repo): baseline gitignore, readme, and docs
 
-### Phase 3: Domain Modules Implementation (Upcoming)
-- [ ] Auth & Profile (`/api/v1/auth`)
-- [ ] User & Counselor Management (`/api/v1/users`)
-- [ ] Partner Onboarding (`/api/v1/partners`)
-- [ ] Lead Engine & Timeline (`/api/v1/leads`)
-- [ ] Follow-Up Scheduling (`/api/v1/followups`)
-- [ ] Admissions & Payments (`/api/v1/admissions`)
-- [ ] Course Catalog (`/api/v1/courses`)
-- [ ] Marketing Assets (`/api/v1/marketing`)
-- [ ] Commissions Engine (`/api/v1/commissions`)
-- [ ] Notifications (`/api/v1/notifications`)
-- [ ] Reports & Aggregations (`/api/v1/reports`)
-- [ ] Audit Logs (`/api/v1/auditlogs`)
+---
 
-### Phase 3: Prisma Migration & Seed (Upcoming)
-- [ ] Run `npx prisma migrate dev --name init`
-- [ ] `prisma/seed.ts` — seed 4 roles, permissions, super admin user
-- [ ] Run `npm run prisma:seed`
+## Upcoming — Phase 3B (Seed Data)
+- [ ] `prisma/seed.ts` — 4 roles, permissions, super admin user
+- [ ] Add `prisma.seed` config to `package.json` (already wired: `"prisma:seed": "tsx prisma/seed.ts"`)
+- [ ] Run seed
 - [ ] Verify with Prisma Studio
+
+## Upcoming — Phase 3C (Domain Modules)
+- [ ] Auth & Profile (`/api/v1/auth`)
+- [ ] Users & Counselors (`/api/v1/users`)
+- [ ] Partners (`/api/v1/partners`)
+- [ ] Leads (`/api/v1/leads`)
+- [ ] Follow-ups (`/api/v1/followups`)
+- [ ] Admissions & Payments (`/api/v1/admissions`)
+- [ ] Courses (`/api/v1/courses`)
+- [ ] Marketing Assets (`/api/v1/marketing`)
+- [ ] Commissions (`/api/v1/commissions`)
+- [ ] Notifications (`/api/v1/notifications`)
+- [ ] Reports (`/api/v1/reports`)
+- [ ] Audit Logs (`/api/v1/auditlogs`)
 
 ---
 
 ## Working Rules (Locked)
-- One step per turn. Verify output before moving on.
-- Commit + push after each phase.
-- Never `git add .` — stage by explicit path.
-- Backend code lives at `admission-hub/backend/`.
-- Documentation lives at `admission-hub/docs/`.
-- Never read `process.env` outside `src/config/env.ts`.
-- Never `new PrismaClient()` outside `src/config/prisma.ts`.
-- ESM: every relative import uses `.js` extension.
-- Environment: Ubuntu + bash.
-- Never run `npm`/`npx` from repo root — always from `backend/`.
-- IDE: Antigravity.
-- No auto-execution — user runs every command.
+- One step per turn when possible; verify output before moving on
+- Commit + push after each meaningful change
+- Stage files by explicit path — never `git add .`
+- Backend code: `admission-hub/backend/`
+- Docs: `admission-hub/docs/`
+- Never read `process.env` outside `src/config/env.ts`
+- Never `new PrismaClient()` outside `src/config/prisma.ts`
+- ESM: every relative import uses `.js` extension
+- Never run `npm`/`npx` from repo root — always from `backend/`
+- Use `./node_modules/.bin/prisma` — avoid `npx prisma` (npx may fetch a different version)
+- Env: Ubuntu + bash
+- IDE: Antigravity
+- Day labels: `Day N` only, no weekday names
 
 ---
 
