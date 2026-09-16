@@ -20,9 +20,9 @@ The planned product is a responsive, multi-tenant admissions CRM for super admin
 
 ## Suggested technology stack
 
-- Frontend: React or Next.js with Tailwind CSS
-- Backend: Node.js with Express
-- Database: PostgreSQL or MongoDB
-- Authentication: JWT with role-based access control
+- `Frontend`: React or Next.js with Tailwind CSS
+- `Backend`: Node.js with Express
+- `Database`: PostgreSQL or MongoDB
+- `Authentication`: JWT with role-based access control
 
 Implementation has not started yet. The documents in `docs/` are the source of truth for product scope and acceptance criteria.
