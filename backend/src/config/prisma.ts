@@ -7,7 +7,7 @@
  * Import this everywhere; never `new PrismaClient()` outside this file.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { env } from './env.js';
 import { logger } from './logger.js';
 
@@ -36,25 +36,36 @@ if (env.NODE_ENV === 'development') {
 }
 
 // Route Prisma logs through Pino so everything has one output stream.
-prisma.$on('query', (e) => {
-    if (env.NODE_ENV === 'development') {
-        logger.debug(
-            {
-                query: e.query,
-                params: e.params,
-                durationMs: e.duration,
-            },
-            'prisma query',
-        );
-    }
-});
+// Type events explicitly to avoid `never` inference under ESM + Prisma v5.
 
-prisma.$on('warn', (e) => {
-    logger.warn({ prisma: e }, 'prisma warning');
-});
+prisma.$on(
+    'query' as never,
+    ((e: Prisma.QueryEvent) => {
+        if (env.NODE_ENV === 'development') {
+            logger.debug(
+                {
+                    query: e.query,
+                    params: e.params,
+                    durationMs: e.duration,
+                },
+                'prisma query',
+            );
+        }
+    }) as never,
+);
 
-prisma.$on('error', (e) => {
-    logger.error({ prisma: e }, 'prisma error');
-});
+prisma.$on(
+    'warn' as never,
+    ((e: Prisma.LogEvent) => {
+        logger.warn({ prisma: e }, 'prisma warning');
+    }) as never,
+);
+
+prisma.$on(
+    'error' as never,
+    ((e: Prisma.LogEvent) => {
+        logger.error({ prisma: e }, 'prisma error');
+    }) as never,
+);
 
 export type PrismaClientSingleton = typeof prisma;
