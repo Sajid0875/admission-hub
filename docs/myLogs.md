@@ -17,10 +17,11 @@
     - Real-time dashboards, reporting, commissions & notifications"
 
 - **Project Name**: WhiteDavid23 Academy Admission Hub — Backend System
-- **Repository Path**: `C:\Users\gamer\Desktop\WhiteDavid23Academy_Workspace\admission-hub\backend`
+- **Repository Path**: `~/Desktop/WhiteDavid23Academy_Workspace/admission-hub/backend`
 - **Git Remote**: `https://github.com/Sajid0875/admission-hub`
 - **Git Branch**: `dev_Sohaim`
 - **Developer Identity**: `s0a1m0x01` (`cx3eno@gmail.com`)
+- **Workspace**: `admission-hub/` (monorepo) — backend lives in `backend/`
 
 ---
 
@@ -56,9 +57,7 @@
 - [x] `backend/.gitignore` — ignores node_modules, .env, dist, coverage, logs
 - [x] `backend/.env.example` — template for all required env vars
 - [x] `backend/.env` — real DATABASE_URL + JWT_SECRET (gitignored)
-- [x] `backend/prisma/schema.prisma` — 14 enums, 15 models
-  - Enums: UserStatus, RoleName, PartnerStatus, CommissionType, LeadPriority, LeadStatus, ActivityType, FollowUpStatus, FollowUpOutcome, PaymentStatus, VerificationStatus, CourseStatus, AssetType, AssetStatus, CommissionStatus
-  - Models: Partner, Role, Permission, RolePermission, User, Course, Lead, LeadActivity, FollowUp, Admission, Payment, MarketingAsset, CommissionRule, CommissionRecord, Notification, AuditLog, RefreshToken
+- [x] `backend/prisma/schema.prisma` — enums and models for full CRM domain
 - [x] Ran `npm install` — 199 packages installed
 - [x] Ran `npx prisma validate` — schema valid
 - [x] Ran `npx prisma generate` — Prisma Client v5.22.0 generated
@@ -74,7 +73,7 @@
 - [x] `backend/src/middleware/error.middleware.ts` — global error handler + `asyncHandler` wrapper
 - [x] `backend/src/middleware/notFound.middleware.ts` — 404 handler
 - [x] `backend/src/app.ts` — Express app assembly (helmet, cors, parsers, request ID, dev logging, `/health`, 404, error handler)
-- [ ] `backend/src/server.ts` — bootstrap + listen + graceful shutdown (content ready, not yet created)
+- [ ] `backend/src/server.ts` — bootstrap + listen + graceful shutdown
 - [ ] `backend/src/types/express.d.ts` — extend Express `Request` with `id: string`
 - [ ] Boot verification — `GET /health` returns 200
 - [ ] Commit + push Phase 2
@@ -84,6 +83,24 @@
 - Fixed typo `passwordsm` → `passwords,` in `logger.ts`
 - Fixed typo `middlewre` → `middleware` in `error.middleware.ts`
 - Fixed `.env` `DATABASE_URL` — special characters in password require URL encoding (`!` → `%21`, `@` → `%40`)
+
+### Environment Notes
+- Started on Windows 10 Home + PowerShell
+- Switched to Ubuntu + bash (current)
+- Prisma verified on Linux: `debian-openssl-3.0.x`, `libquery_engine-debian-openssl-3.0.x.so.node`
+- Node v24.21.0, npm 11.19.0
+- `.gitattributes` added to enforce LF line endings across the repo
+
+### Git History (Day 1 close)
+- Branch: `dev_Sohaim`
+- HEAD = `origin/dev_Sohaim` = `b8c9d8e` (in sync, nothing to push)
+- Chain:
+  - `b8c9d8e` — Merge branch 'dev_Sohaim' of https://github.com/Sajid0875/admission-hub into dev_Sohaim
+  - `54fb5bd` — Update README.md
+  - `2d4f4a6` — feat: all corrected config changes implemented from src
+  - `e268fc1` — chore(repo): enforce LF line endings across the repository
+  - `42b95ff` — chore(backend): scaffold package, tsconfig, env template, prisma schema
+  - `7777443` — chore(repo): baseline gitignore, readme, and docs
 
 ### Phase 3: Domain Modules Implementation (Upcoming)
 - [ ] Auth & Profile (`/api/v1/auth`)
@@ -116,7 +133,8 @@
 - Never read `process.env` outside `src/config/env.ts`.
 - Never `new PrismaClient()` outside `src/config/prisma.ts`.
 - ESM: every relative import uses `.js` extension.
-- Windows PowerShell only.
+- Environment: Ubuntu + bash.
+- Never run `npm`/`npx` from repo root — always from `backend/`.
 - IDE: Antigravity.
 - No auto-execution — user runs every command.
 
