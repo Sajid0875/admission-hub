@@ -66,17 +66,43 @@ function ToastContainer() {
 }
 
 export function AppProviders({ children }: AppProvidersProps) {
-  const setToken = useAuthStore((state) => state.setToken);
+  const initAuthFromStorage = useAuthStore((state) => state.initAuthFromStorage);
+  const logout = useAuthStore((state) => state.logout);
+  const addToast = useUIStore((state) => state.addToast);
 
-  // Sync token from localStorage on mount
+  // Sync session on mount & subscribe to 401/403 events
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedToken = localStorage.getItem("auth_token");
-      if (storedToken) {
-        setToken(storedToken);
+    initAuthFromStorage();
+
+    const handleUnauthorized = () => {
+      logout();
+      addToast({
+        type: "error",
+        title: "Session Expired",
+        message: "Your session has expired. Please sign in again.",
+      });
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        window.location.href = `/login?returnUrl=${encodeURIComponent(window.location.pathname)}`;
       }
-    }
-  }, [setToken]);
+    };
+
+    const handleForbidden = (event: Event) => {
+      const customEvent = event as CustomEvent<{ message?: string }>;
+      addToast({
+        type: "error",
+        title: "Access Denied (403)",
+        message: customEvent.detail?.message || "You do not have permission to perform this action.",
+      });
+    };
+
+    window.addEventListener("auth:unauthorized", handleUnauthorized);
+    window.addEventListener("auth:forbidden", handleForbidden);
+
+    return () => {
+      window.removeEventListener("auth:unauthorized", handleUnauthorized);
+      window.removeEventListener("auth:forbidden", handleForbidden);
+    };
+  }, [initAuthFromStorage, logout, addToast]);
 
   return (
     <QueryProvider>

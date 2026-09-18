@@ -28,6 +28,7 @@ export interface LeadActivity {
 
 export interface Lead {
   id: string;
+  _id?: string;
   studentName: string;
   phone: string;
   whatsapp?: string;
@@ -49,3 +50,40 @@ export interface Lead {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface LeadQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: LeadStatus | "all";
+  priority?: LeadPriority | "all";
+  courseId?: string;
+}
+
+export interface CreateLeadPayload {
+  studentName: string;
+  phone: string;
+  email?: string;
+  courseId?: string;
+  courseInterest?: string;
+  source?: string;
+  priority: LeadPriority;
+  budget?: number;
+  whatsapp?: string;
+  city?: string;
+}
+
+export interface UpdateLeadPayload {
+  status?: LeadStatus;
+  priority?: LeadPriority;
+  assignedTo?: string;
+  followUpDate?: string;
+  notes?: string;
+  studentName?: string;
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  city?: string;
+  budget?: number;
+}
+

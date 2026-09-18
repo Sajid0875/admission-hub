@@ -1,5 +1,5 @@
 import axios, { type AxiosError, type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from "axios";
-import type { ApiErrorResponse, ApiSuccessResponse, NormalizedError } from "@/types/api";
+import type { ApiErrorResponse, ApiSuccessResponse, NormalizedError, PaginatedResponse } from "@/types/api";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
 
@@ -42,8 +42,8 @@ export function normalizeApiError(error: unknown): NormalizedError {
 
     switch (status) {
       case 400:
-        code = "BAD_REQUEST";
-        message = "The request payload was invalid or malformed.";
+        code = "VALIDATION_ERROR";
+        message = "The request payload failed validation. Please check the highlighted fields.";
         break;
       case 401:
         code = "UNAUTHENTICATED";
@@ -51,15 +51,15 @@ export function normalizeApiError(error: unknown): NormalizedError {
         break;
       case 403:
         code = "FORBIDDEN";
-        message = "You do not have permission to perform this action.";
+        message = "Access restricted: You do not have sufficient permissions to perform this action.";
         break;
       case 404:
         code = "NOT_FOUND";
         message = "The requested resource was not found.";
         break;
       case 409:
-        code = "CONFLICT_OR_DUPLICATE";
-        message = "A conflict or duplicate record occurred.";
+        code = "DUPLICATE_LEAD";
+        message = "This phone number already exists as a lead for this partner.";
         break;
       case 422:
         code = "VALIDATION_ERROR";
@@ -73,8 +73,9 @@ export function normalizeApiError(error: unknown): NormalizedError {
         break;
     }
 
-    // Network disconnection / timeout
-    if (axiosError.code === "ECONNABORTED" || !axiosError.response) {
+    // Network disconnection / timeout or macOS AirTunes port 5000 collision
+    const serverHeader = String(axiosError.response?.headers?.["server"] || "");
+    if (axiosError.code === "ECONNABORTED" || !axiosError.response || serverHeader.includes("AirTunes")) {
       code = "NETWORK_ERROR";
       message = "Unable to connect to server. Please check your network connection.";
     }
@@ -146,6 +147,17 @@ axiosInstance.interceptors.response.use(
     // Handle token expiry / 401 session clearing
     if (normalized.statusCode === 401 && typeof window !== "undefined") {
       localStorage.removeItem("auth_token");
+      localStorage.removeItem("auth_user");
+      window.dispatchEvent(new CustomEvent("auth:unauthorized"));
+    }
+
+    // Handle 403 Forbidden
+    if (normalized.statusCode === 403 && typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("auth:forbidden", {
+          detail: { message: normalized.message },
+        })
+      );
     }
 
     return Promise.reject(normalized);
@@ -163,6 +175,28 @@ export const apiClient = {
         return (res.data as ApiSuccessResponse<T>).data;
       }
       return res.data as T;
+    } catch (err) {
+      throw normalizeApiError(err);
+    }
+  },
+
+  async getPaginated<T>(url: string, config?: AxiosRequestConfig): Promise<PaginatedResponse<T>> {
+    try {
+      const res = await axiosInstance.get<PaginatedResponse<T>>(url, config);
+      if (res.data && typeof res.data === "object" && "meta" in res.data) {
+        return res.data;
+      }
+      // Fallback if data array is returned directly
+      const rawData = (res.data as unknown as { data?: T[] })?.data || (Array.isArray(res.data) ? res.data : []);
+      return {
+        success: true,
+        data: rawData as T[],
+        meta: {
+          page: 1,
+          limit: (rawData as T[]).length || 20,
+          total: (rawData as T[]).length || 0,
+        },
+      };
     } catch (err) {
       throw normalizeApiError(err);
     }

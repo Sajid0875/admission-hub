@@ -3,4 +3,10 @@
  */
 
 export * from "./client";
+export * from "./authService";
+export * from "./dashboardService";
+export * from "./leadService";
+export * from "./admissionService";
+export * from "./commissionService";
+export * from "./adminService";
 export * from "./mockService";
