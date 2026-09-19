@@ -13,9 +13,19 @@ declare global {
             /**
              * Request ID — set by requestId middleware in app.ts.
              * Falls back to a UUID when the client does not send `x-request-id`.
-             * Always present after the request ID middleware runs.
              */
             id: string;
+
+            /**
+             * Authenticated user context — set by `protect` middleware.
+             * Undefined on public routes. Controllers behind `protect`
+             * can rely on it being present.
+             */
+            user?: {
+                id: string;
+                role: string;
+                partnerId: string | null;
+            };
         }
     }
 }
