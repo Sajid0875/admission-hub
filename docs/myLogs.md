@@ -256,14 +256,43 @@
 - `PaymentMode` — not a Prisma enum; replaced with Zod `z.enum(ALLOWED_PAYMENT_MODES)` with 6 allowed values
 - Removed unused `appendActivity` helper — activities written inline within transactions
 
+---
+
+#### Phase 3I — Courses + Marketing Assets Module
+- [x] `src/modules/courses/course.schema.ts` — Zod schemas
+- [x] `src/modules/courses/course.service.ts` — global read, super_admin write, soft-archive
+- [x] `src/modules/courses/course.controller.ts` — HTTP handlers
+- [x] `src/modules/courses/course.routes.ts` — 5 endpoints gated by role
+- [x] `src/modules/marketing-assets/marketing-asset.schema.ts` — Zod schemas
+- [x] `src/modules/marketing-assets/marketing-asset.service.ts` — with courseId validation
+- [x] `src/modules/marketing-assets/marketing-asset.controller.ts` — HTTP handlers
+- [x] `src/modules/marketing-assets/marketing-asset.routes.ts` — 5 endpoints (incl. DELETE for soft-archive)
+- [x] Wired both routers into `src/app.ts`
+- [x] `src/modules/courses/__tests__/course.service.test.ts` — 12 tests
+- [x] `src/modules/marketing-assets/__tests__/marketing-asset.service.test.ts` — 15 tests
+- [x] Smoke tests passed:
+  - Super admin creates a course → 201
+  - Partner admin lists courses → sees all (global read)
+  - Partner admin tries to create course → 403
+  - Super admin creates marketing asset linked to course → 201
+  - Partner admin lists assets filtered by courseId / type
+  - DELETE asset → status `ARCHIVED`, row still in DB (soft delete verified)
+  - Default list hides archived; explicit `?status=ARCHIVED` shows it
+- [x] Commit: `7971d84 feat(courses+marketing): course catalog and marketing assets`
+
+#### Fixes Applied
+- None — clean build
+
 #### Test Results (Latest)
-- **133 tests pass** across 6 files:
+- **160 tests pass** across 8 files:
   - `auth.service.test.ts` — 11 tests
   - `user.service.test.ts` — 23 tests
   - `partner.service.test.ts` — 26 tests
   - `lead.service.test.ts` — 26 tests
   - `followup.service.test.ts` — 23 tests
   - `admission.service.test.ts` — 24 tests
+  - `course.service.test.ts` — 12 tests
+  - `marketing-asset.service.test.ts` — 15 tests
 
 #### Environment Gotchas
 - Postgres occasionally stops on Ubuntu — `sudo systemctl start postgresql` before running commands
@@ -276,10 +305,12 @@
 
 ## Git History
 
-### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `35a9d0d`
+### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `7971d84`
 
 | Hash | Message | Phase |
 |---|---|---|
+| `7971d84` | feat(courses+marketing): course catalog and marketing assets | Phase 3I |
+| `4221142` | docs(myLogs): phase 3h update through admissions module | Phase 3H |
 | `35a9d0d` | feat(admissions): module with admission + payment lifecycle and commission trigger | Phase 3H |
 | `e54508a` | docs(myLogs): fix head hash and deduplicate phase 3g block | Phase 3G |
 | `5542e02` | feat(followups): module with scheduling, lifecycle, and timeline integration | Phase 3G |
@@ -312,18 +343,15 @@
 | Leads | 8 | 26 | Done |
 | Follow-ups | 7 | 23 | Done |
 | Admissions + Payments | 9 | 24 | Done |
-| **Total** | **37** | **133** | In progress |
+| Courses | 5 | 12 | Done |
+| Marketing Assets | 5 | 15 | Done |
+| **Total** | **47** | **160** | In progress |
 
 ---
 
 ## Upcoming Phases
 
-### Phase 3I — Courses + Marketing Assets (Next)
-- [ ] Course CRUD (super_admin write; all roles read)
-- [ ] Marketing assets (embedded in Course per SRS design)
-- [ ] Public catalog read for partners
-
-### Phase 3J — Commissions
+### Phase 3J — Commissions (Next)
 - [ ] Commission rules CRUD (super_admin)
 - [ ] Commission record lifecycle: PENDING → APPROVED → PAID
 - [ ] Payout workflows
