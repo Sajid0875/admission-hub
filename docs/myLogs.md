@@ -207,12 +207,37 @@
 - `Prisma.InputJsonValue` type for metadata in `lead.service.ts`
 - Unused `normalizedPhone` and `normalizePhone` removed from lead service
 
+---
+
+#### Phase 3G — Follow-ups Module
+- [x] `src/modules/followups/followup.schema.ts` — Zod schemas for all operations
+- [x] `src/modules/followups/followup.service.ts` — lifecycle state machine, overdue computation, timeline integration
+- [x] `src/modules/followups/followup.controller.ts` — HTTP handlers
+- [x] `src/modules/followups/followup.routes.ts` — 7 endpoints gated by role
+- [x] Wired `followUpRouter` into `src/app.ts` at `/api/v1/followups`
+- [x] Added nested route `GET /api/v1/leads/:id/followups` to `lead.routes.ts`
+- [x] `src/modules/followups/__tests__/followup.service.test.ts` — 23 tests
+- [x] Smoke tests passed:
+  - Create follow-up → 201, `status: PENDING`, `overdue: false`
+  - Snooze past date → 400
+  - Snooze future date → 200
+  - Complete with outcome → 200, `status: COMPLETED`, `completedAt` stamped
+  - Complete again → 400
+  - Cancel → 200, `status: CANCELLED`
+  - Nested list → 2 items
+  - Timeline shows every follow-up lifecycle action
+- [x] Commit: `5542e02 feat(followups): module with scheduling, lifecycle, and timeline integration`
+
+#### Fixes Applied
+- Added missing `FollowUpOutcome` and `LeadPriority` imports to `followup.service.ts`
+
 #### Test Results (Latest)
-- **86 tests pass** across 4 files:
+- **109 tests pass** across 5 files:
   - `auth.service.test.ts` — 11 tests
   - `user.service.test.ts` — 23 tests
   - `partner.service.test.ts` — 26 tests
   - `lead.service.test.ts` — 26 tests
+  - `followup.service.test.ts` — 23 tests
 
 #### Environment Gotchas
 - Postgres occasionally stops on Ubuntu — `sudo systemctl start postgresql` before running commands
@@ -224,10 +249,11 @@
 
 ## Git History
 
-### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `43ead06`
+### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `5542e02`
 
 | Hash | Message | Phase |
 |---|---|---|
+| `5542e02` | feat(followups): module with scheduling, lifecycle, and timeline integration | Phase 3G |
 | `43ead06` | feat(leads): module with crud, assignment, status state machine, and timeline | Phase 3F |
 | `add1cd0` | feat(partners): module with onboarding, approval, and status lifecycle | Phase 3E |
 | `6fb69c5` | docs(myLogs): day 8 update through users module | Phase 3D |
@@ -255,20 +281,19 @@
 | Users | 6 | 23 | Done |
 | Partners | 5 | 26 | Done |
 | Leads | 8 | 26 | Done |
-| **Total** | **21** | **86** | In progress |
+| Follow-ups | 7 | 23 | Done |
+| **Total** | **28** | **109** | In progress |
 
 ---
 
 ## Upcoming Phases
 
-### Phase 3G — Follow-ups Module (Next)
-- [ ] Follow-up CRUD with lead + assignee scoping
-- [ ] Status lifecycle: PENDING, COMPLETED, SNOOZED, CANCELLED
-- [ ] Overdue computed on the fly
-- [ ] Outcomes on completion
-- [ ] Timeline integration (append LeadActivity on mutations)
+### Phase 3H — Admissions + Payments (Next)
+- [ ] Admission CRUD with verification
+- [ ] Payment records (append-only)
+- [ ] Auto-generate commission on admission confirmation
+- [ ] Timeline integration
 
-### Phase 3H — Admissions + Payments
 ### Phase 3I — Courses + Marketing Assets
 ### Phase 3J — Commissions
 ### Phase 3K — Notifications
