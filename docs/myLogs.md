@@ -177,72 +177,102 @@
 - Stray test file `auth/__tests__/user.service.test.ts` deleted
 - All 4 roles seeded in `seedAuthFixtures` so `COUNSELOR`/`SUPPORT` role lookups succeed in tests
 
-#### Test Results (Day 8)
-- **34 tests pass** across 2 files:
+#### Commit
+- [x] Commit: `9803964 feat(users): module with crud, tenant scope, and service tests`
+- [x] Commit: `6fb69c5 docs(myLogs): day 8 update through users module`
+
+---
+
+#### Phase 3E — Partners Module
+- [x] `src/modules/partners/partner.schema.ts` — Zod schemas
+- [x] `src/modules/partners/partner.service.ts` — CRUD + status state machine
+- [x] `src/modules/partners/partner.controller.ts` — HTTP handlers
+- [x] `src/modules/partners/partner.routes.ts` — route gating
+- [x] Wired `partnerRouter` into `src/app.ts` at `/api/v1/partners`
+- [x] `src/modules/partners/__tests__/partner.service.test.ts` — 26 tests
+- [x] Smoke tests: create → PENDING, duplicate email → 409, approve → ACTIVE with metadata, invalid transition → 400, get by id → 200
+- [x] Commit: `add1cd0 feat(partners): module with onboarding, approval, and status lifecycle`
+
+#### Phase 3F — Leads Module
+- [x] `src/modules/leads/lead.schema.ts` — Zod schemas for all lead operations
+- [x] `src/modules/leads/lead.service.ts` — CRUD, assignment, status state machine, timeline, archive
+- [x] `src/modules/leads/lead.controller.ts` — HTTP handlers
+- [x] `src/modules/leads/lead.routes.ts` — 8 endpoints gated by role
+- [x] Wired `leadRouter` into `src/app.ts` at `/api/v1/leads`
+- [x] `src/modules/leads/__tests__/lead.service.test.ts` — 26 tests
+- [x] Smoke tests: create → NEW, duplicate phone → 409, assign → 200, invalid transition → 400, valid transition → 200, timeline shows 3 activities with metadata
+- [x] Commit: `43ead06 feat(leads): module with crud, assignment, status state machine, and timeline`
+
+#### Fixes Applied
+- `Prisma.InputJsonValue` type for metadata in `lead.service.ts`
+- Unused `normalizedPhone` and `normalizePhone` removed from lead service
+
+#### Test Results (Latest)
+- **86 tests pass** across 4 files:
   - `auth.service.test.ts` — 11 tests
   - `user.service.test.ts` — 23 tests
+  - `partner.service.test.ts` — 26 tests
+  - `lead.service.test.ts` — 26 tests
 
-#### Commit
-- [ ] Commit: `feat(users): module with crud, tenant scope, and service tests` (pending push)
+#### Environment Gotchas
+- Postgres occasionally stops on Ubuntu — `sudo systemctl start postgresql` before running commands
+- `npx prisma` from wrong folder downloads a different version — use `./node_modules/.bin/prisma`
+- Placeholder values (`<paste-...>`) accidentally assigned to shell vars — sanity check with `echo "$VAR"` first
+- `git commit` without `git add` silently does nothing — always check `git status` between add and commit
 
 ---
 
 ## Git History
 
-### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `9537028` (before users commit)
+### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `43ead06`
 
-| Hash | Message | Day |
+| Hash | Message | Phase |
 |---|---|---|
-| pending | feat(users): module with crud, tenant scope, and service tests | Day 8 |
-| `9537028` | docs(myLogs): day-based milestone log through phase 3c | Day 8 |
-| `7577304` | feat(auth): login, me, jwt middleware, and service tests | Day 8 |
-| `a8ac886` | feat(prisma): seed roles, permissions, and super admin | Day 5 |
-| `62e4a0c` | feat(prisma): initial migration + dev log update | Day 5 |
-| `a82a609` | docs(myLogs): accurate day 1 log | Day 1 |
-| `d436eb2` | feat(backend): server bootstrap + prisma event typing + express request augmentation | Day 1 |
-| `b8c9d8e` | Merge branch 'dev_Sohaim' | Day 1 |
-| `54fb5bd` | Update README.md | Day 1 |
-| `2d4f4a6` | feat: all corrected config changes implemented from src | Day 1 |
-| `e268fc1` | chore(repo): enforce LF line endings | Day 1 |
-| `42b95ff` | chore(backend): scaffold package, tsconfig, env template, prisma schema | Day 1 |
-| `7777443` | chore(repo): baseline gitignore, readme, and docs | Day 1 |
+| `43ead06` | feat(leads): module with crud, assignment, status state machine, and timeline | Phase 3F |
+| `add1cd0` | feat(partners): module with onboarding, approval, and status lifecycle | Phase 3E |
+| `6fb69c5` | docs(myLogs): day 8 update through users module | Phase 3D |
+| `9803964` | feat(users): module with crud, tenant scope, and service tests | Phase 3D |
+| `9537028` | docs(myLogs): day-based milestone log through phase 3c | Phase 3C |
+| `7577304` | feat(auth): login, me, jwt middleware, and service tests | Phase 3C |
+| `a8ac886` | feat(prisma): seed roles, permissions, and super admin | Phase 3B |
+| `62e4a0c` | feat(prisma): initial migration + dev log update | Phase 3A |
+| `a82a609` | docs(myLogs): accurate day 1 log | Phase 2 |
+| `d436eb2` | feat(backend): server bootstrap + prisma event typing + express request augmentation | Phase 2 |
+| `b8c9d8e` | Merge branch 'dev_Sohaim' | Setup |
+| `54fb5bd` | Update README.md | Setup |
+| `2d4f4a6` | feat: all corrected config changes implemented from src | Setup |
+| `e268fc1` | chore(repo): enforce LF line endings | Setup |
+| `42b95ff` | chore(backend): scaffold package, tsconfig, env template, prisma schema | Phase 1 |
+| `7777443` | chore(repo): baseline gitignore, readme, and docs | Phase 0 |
+
+---
+
+## Progress Summary
+
+| Module | Endpoints | Tests | Status |
+|---|---|---|---|
+| Auth | 2 | 11 | Done |
+| Users | 6 | 23 | Done |
+| Partners | 5 | 26 | Done |
+| Leads | 8 | 26 | Done |
+| **Total** | **21** | **86** | In progress |
 
 ---
 
 ## Upcoming Phases
 
-### Phase 3E — Partners Module (Next)
-- [ ] `src/modules/partners/partner.schema.ts`
-- [ ] `src/modules/partners/partner.service.ts` — onboarding, approval, suspension, listing
-- [ ] `src/modules/partners/partner.controller.ts`
-- [ ] `src/modules/partners/partner.routes.ts`
-- [ ] `src/modules/partners/__tests__/partner.service.test.ts`
-- [ ] Wire into `src/app.ts` at `/api/v1/partners`
-- [ ] Endpoints:
-  - [ ] `GET /api/v1/partners` — list (super_admin only, or own for partner_admin)
-  - [ ] `GET /api/v1/partners/:id`
-  - [ ] `POST /api/v1/partners` — onboarding request
-  - [ ] `PATCH /api/v1/partners/:id`
-  - [ ] `PATCH /api/v1/partners/:id/status` — approve/reject/suspend (super_admin)
-- [ ] Manual smoke test
-- [ ] Commit + push
-
-### Phase 3F — Leads Module
-- [ ] CRUD + assignment + duplicate detection + status transitions
-- [ ] Tenant-scoped, counselor-scoped via `buildAssignmentScope`
-
-### Phase 3G — Follow-ups Module
+### Phase 3G — Follow-ups Module (Next)
+- [ ] Follow-up CRUD with lead + assignee scoping
+- [ ] Status lifecycle: PENDING, COMPLETED, SNOOZED, CANCELLED
+- [ ] Overdue computed on the fly
+- [ ] Outcomes on completion
+- [ ] Timeline integration (append LeadActivity on mutations)
 
 ### Phase 3H — Admissions + Payments
-
 ### Phase 3I — Courses + Marketing Assets
-
 ### Phase 3J — Commissions
-
 ### Phase 3K — Notifications
-
 ### Phase 3L — Reports
-
 ### Phase 3M — Audit Logs
 
 ---
@@ -251,6 +281,7 @@
 - One step per turn when possible; verify output before moving on
 - Commit + push after each meaningful change
 - Stage files by explicit path — never `git add .`
+- Always check `git status` between `git add` and `git commit`
 - Backend code: `admission-hub/backend/`
 - Docs: `admission-hub/docs/`
 - Never read `process.env` outside `src/config/env.ts`
@@ -259,9 +290,9 @@
 - Never run `npm`/`npx` from repo root — always from `backend/`
 - Use `./node_modules/.bin/prisma` — avoid `npx prisma` (may fetch a different version)
 - Tests must run against `admission_hub_test` only
+- Sanity-check shell vars with `echo "$VAR"` before use
 - Env: Ubuntu + bash
 - IDE: Antigravity
-- Day labels: `Day N — DD Month YYYY` only, no weekday names
 
 ---
 
