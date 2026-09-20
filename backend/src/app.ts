@@ -25,6 +25,7 @@ import { userRouter } from './modules/users/user.routes.js';
 import { partnerRouter } from './modules/partners/partner.routes.js';
 import { leadRouter } from './modules/leads/lead.routes.js';
 import { followUpRouter } from './modules/followups/followup.routes.js';
+import { admissionRouter } from './modules/admissions/admission.routes.js';
 import { errorHandler } from './middleware/error.middleware.js';
 import { notFoundHandler } from './middleware/notFound.middleware.js';
 
@@ -101,10 +102,11 @@ export const createApp = (): Application => {
     app.use('/api/v1/partners', partnerRouter);
     app.use('/api/v1/leads', leadRouter);
     app.use('/api/v1/followups', followUpRouter);
+    app.use('/api/v1/admissions', admissionRouter);
 
     // Future modules:
-    // app.use('/api/v1/admissions', admissionRouter);
     // app.use('/api/v1/courses', courseRouter);
+    // app.use('/api/v1/commissions', commissionRouter);
     // ...
     // --- 404 handler (must be after all routes) ---
     app.use(notFoundHandler);
