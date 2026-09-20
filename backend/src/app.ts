@@ -22,6 +22,7 @@ import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { userRouter } from './modules/users/user.routes.js';
+import { partnerRouter } from './modules/partners/partner.routes.js';
 import { errorHandler } from './middleware/error.middleware.js';
 import { notFoundHandler } from './middleware/notFound.middleware.js';
 
@@ -95,9 +96,9 @@ export const createApp = (): Application => {
     // --- API routes ---
     app.use('/api/v1/auth', authRouter);
     app.use('/api/v1/users', userRouter);
+    app.use('/api/v1/partners', partnerRouter);
 
     // Future modules:
-    // app.use('/api/v1/partners', partnerRouter);
     // app.use('/api/v1/leads', leadRouter);
     // ...
     // --- 404 handler (must be after all routes) ---
