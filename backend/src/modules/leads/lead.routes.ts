@@ -35,6 +35,7 @@ import {
     archiveLeadHandler,
     listLeadActivitiesHandler,
 } from './lead.controller.js';
+import { listLeadFollowUpsHandler } from '../followups/followup.controller.js';
 
 export const leadRouter: Router = Router();
 
@@ -58,6 +59,12 @@ leadRouter.get(
     '/:id/activities',
     authorize('SUPER_ADMIN', 'PARTNER_ADMIN', 'COUNSELOR', 'SUPPORT'),
     asyncHandler(listLeadActivitiesHandler),
+);
+
+leadRouter.get(
+    '/:id/followups',
+    authorize('SUPER_ADMIN', 'PARTNER_ADMIN', 'COUNSELOR', 'SUPPORT'),
+    asyncHandler(listLeadFollowUpsHandler),
 );
 
 // --- Create (partner_admin and counselor; service enforces partner binding) ---
