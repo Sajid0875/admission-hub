@@ -231,28 +231,57 @@
 #### Fixes Applied
 - Added missing `FollowUpOutcome` and `LeadPriority` imports to `followup.service.ts`
 
+---
+
+#### Phase 3H — Admissions + Payments Module
+- [x] `src/modules/admissions/admission.schema.ts` — Zod schemas for admission + payment operations
+- [x] `src/modules/admissions/admission.service.ts` — transactional admission creation, payment lifecycle, commission trigger, refund logic
+- [x] `src/modules/admissions/admission.controller.ts` — HTTP handlers
+- [x] `src/modules/admissions/admission.routes.ts` — 9 endpoints gated by role
+- [x] Wired `admissionRouter` into `src/app.ts` at `/api/v1/admissions`
+- [x] `src/modules/admissions/__tests__/admission.service.test.ts` — 24 tests
+- [x] Smoke tests passed:
+  - Create admission → 201, lead becomes `ADMITTED`, `paymentStatus: UNPAID`
+  - Duplicate admission → 409 "Lead is already admitted"
+  - Partial payment ₹20,000 → `paymentStatus: PARTIAL`
+  - Full payment ₹30,000 → `paymentStatus: PAID`
+  - Overpay → 400 with remaining balance
+  - Verify admission → `verificationStatus: VERIFIED`
+  - Commission record auto-generated (rate 0 until commission rules phase)
+  - Refund payment → `paymentStatus` back to `PARTIAL`
+  - Lead timeline shows `ADMISSION_CREATED` + `Payment refunded`
+- [x] Commit: `35a9d0d feat(admissions): module with admission + payment lifecycle and commission trigger`
+
+#### Fixes Applied
+- `PaymentMode` — not a Prisma enum; replaced with Zod `z.enum(ALLOWED_PAYMENT_MODES)` with 6 allowed values
+- Removed unused `appendActivity` helper — activities written inline within transactions
+
 #### Test Results (Latest)
-- **109 tests pass** across 5 files:
+- **133 tests pass** across 6 files:
   - `auth.service.test.ts` — 11 tests
   - `user.service.test.ts` — 23 tests
   - `partner.service.test.ts` — 26 tests
   - `lead.service.test.ts` — 26 tests
   - `followup.service.test.ts` — 23 tests
+  - `admission.service.test.ts` — 24 tests
 
 #### Environment Gotchas
 - Postgres occasionally stops on Ubuntu — `sudo systemctl start postgresql` before running commands
 - `npx prisma` from wrong folder downloads a different version — use `./node_modules/.bin/prisma`
 - Placeholder values (`<paste-...>`) accidentally assigned to shell vars — sanity check with `echo "$VAR"` first
 - `git commit` without `git add` silently does nothing — always check `git status` between add and commit
+- Windows CRLF leaked into curl JSON payloads — write JSON to a temp file with a heredoc and use `-d @/tmp/file.json`
 
 ---
 
 ## Git History
 
-### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `5542e02`
+### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `35a9d0d`
 
 | Hash | Message | Phase |
 |---|---|---|
+| `35a9d0d` | feat(admissions): module with admission + payment lifecycle and commission trigger | Phase 3H |
+| `e54508a` | docs(myLogs): fix head hash and deduplicate phase 3g block | Phase 3G |
 | `5542e02` | feat(followups): module with scheduling, lifecycle, and timeline integration | Phase 3G |
 | `43ead06` | feat(leads): module with crud, assignment, status state machine, and timeline | Phase 3F |
 | `add1cd0` | feat(partners): module with onboarding, approval, and status lifecycle | Phase 3E |
@@ -282,20 +311,24 @@
 | Partners | 5 | 26 | Done |
 | Leads | 8 | 26 | Done |
 | Follow-ups | 7 | 23 | Done |
-| **Total** | **28** | **109** | In progress |
+| Admissions + Payments | 9 | 24 | Done |
+| **Total** | **37** | **133** | In progress |
 
 ---
 
 ## Upcoming Phases
 
-### Phase 3H — Admissions + Payments (Next)
-- [ ] Admission CRUD with verification
-- [ ] Payment records (append-only)
-- [ ] Auto-generate commission on admission confirmation
-- [ ] Timeline integration
+### Phase 3I — Courses + Marketing Assets (Next)
+- [ ] Course CRUD (super_admin write; all roles read)
+- [ ] Marketing assets (embedded in Course per SRS design)
+- [ ] Public catalog read for partners
 
-### Phase 3I — Courses + Marketing Assets
 ### Phase 3J — Commissions
+- [ ] Commission rules CRUD (super_admin)
+- [ ] Commission record lifecycle: PENDING → APPROVED → PAID
+- [ ] Payout workflows
+- [ ] Replace the placeholder rate-0 commission rule
+
 ### Phase 3K — Notifications
 ### Phase 3L — Reports
 ### Phase 3M — Audit Logs
@@ -316,6 +349,7 @@
 - Use `./node_modules/.bin/prisma` — avoid `npx prisma` (may fetch a different version)
 - Tests must run against `admission_hub_test` only
 - Sanity-check shell vars with `echo "$VAR"` before use
+- For complex JSON payloads, write to a temp file and use `curl -d @file.json`
 - Env: Ubuntu + bash
 - IDE: Antigravity
 
