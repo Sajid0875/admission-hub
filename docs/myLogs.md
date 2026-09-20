@@ -75,19 +75,35 @@
 - [x] Boot verified — `GET /health` returns 200
 - [x] Commit: `d436eb2 feat(backend): server bootstrap + prisma event typing + express request augmentation`
 
-#### Fixes Applied (Day 1)
+#### Fixes Applied
 - Em-dash encoding issue in `AppError.ts` — replaced with hyphen
 - Typo `passwordsm` → `passwords,` in `logger.ts`
 - Typo `middlewre` → `middleware` in `error.middleware.ts`
 - `.env` `DATABASE_URL` — special chars URL-encoded (`!` → `%21`, `@` → `%40`)
 - Prisma event typing — `$on('query' as never, ...)` cast for strict TS
 
-#### Environment Notes (Day 1)
+#### Environment Notes
 - Migrated from Windows + PowerShell to Ubuntu + bash
 - Node v24.21.0, npm 11.19.0
 - PostgreSQL 18 (`postgresql@18-main`)
 - Wiped Windows `node_modules`, reinstalled on Linux
 - Added `.gitattributes` to enforce LF line endings
+
+---
+
+#### Phase 3A — Initial Prisma Migration
+- [x] Confirmed Postgres `18-main` running
+- [x] Confirmed `admission_hub` DB exists
+- [x] Ran `./node_modules/.bin/prisma migrate dev --name init`
+- [x] Migration `20260916211224_init` created and applied
+- [x] 18 tables created (17 domain + `_prisma_migrations`)
+- [x] Commit: `62e4a0c feat(prisma): initial migration + dev log update`
+
+#### Phase 3B — Seed Data
+- [x] `backend/prisma/seed.ts` — roles, permissions, super admin
+- [x] Fixed `tsconfig.json` `include` — removed `prisma/**/*.ts` (was causing rootDir conflict)
+- [x] Ran `npm run prisma:seed` — 26 permissions, 4 roles, 1 super admin
+- [x] Commit: `a8ac886 feat(prisma): seed roles, permissions, and super admin`
 
 ---
 
@@ -119,7 +135,7 @@
 - [x] All 11 tests pass
 - [x] Fixed service to normalize email (`trim().toLowerCase()`) before DB lookup
 
-#### Fixes Applied (Day 7)
+#### Fixes Applied
 - Service `login` now normalizes email — previously trusted caller
 - `tsconfig.json` gained `exclude` array to keep production build clean
 - Test DB isolation enforced by safety guards in `tests/setup.ts` and `tests/helpers/test-db.ts`
@@ -131,15 +147,54 @@
 - [x] Commit: `7577304 feat(auth): login, me, jwt middleware, and service tests`
 - [x] Pushed to `origin/dev_Sohaim`
 - [x] Working tree clean
+- [x] Commit: `9537028 docs(myLogs): day-based milestone log through phase 3c`
+
+#### Phase 3D — Users Module
+- [x] `backend/src/shared/utils/scope.ts` — `buildTenantScope`, `buildAssignmentScope`, `assertCanAccessPartner`
+- [x] `backend/src/modules/users/user.schema.ts` — Zod schemas (create, update, status, role, list query)
+- [x] `backend/src/modules/users/user.service.ts` — business logic with tenant isolation
+- [x] `backend/src/modules/users/user.controller.ts` — HTTP handlers
+- [x] `backend/src/modules/users/user.routes.ts` — route gating via `authorize(...)`
+- [x] Wired `userRouter` into `src/app.ts` at `/api/v1/users`
+- [x] Extended `tests/helpers/test-db.ts`:
+  - `TEST_PARTNER` and `TEST_PARTNER_FIXTURE_ADMIN` constants
+  - `seedPartnerFixture()` helper (partner + partner_admin with dedicated email)
+  - `seedAuthFixtures` now also seeds `COUNSELOR` and `SUPPORT` roles
+- [x] `src/modules/users/__tests__/user.service.test.ts` — 23 tests
+
+#### Phase 3D — Smoke Tests (Manual via curl)
+- [x] Super admin lists all users → sees only super admin (initially)
+- [x] Created partner via psql → got UUID
+- [x] Super admin creates partner_admin via API → returned user + `temporaryPassword`
+- [x] Partner admin logs in → 200 + token
+- [x] Partner admin lists users → sees only own org (1 user)
+- [x] Partner admin attempts to create SUPER_ADMIN → 403
+
+#### Fixes Applied
+- Error factories called with `new` — removed `new` from all `ForbiddenError`/`BadRequestError`/`ConflictError`/`NotFoundError` calls in `user.service.ts`
+- `seedPartnerFixture` collision with `seedAuthFixtures` — dedicated `TEST_PARTNER_FIXTURE_ADMIN` email
+- Test count expectations corrected (3 users after both fixtures, not 2)
+- Stray test file `auth/__tests__/user.service.test.ts` deleted
+- All 4 roles seeded in `seedAuthFixtures` so `COUNSELOR`/`SUPPORT` role lookups succeed in tests
+
+#### Test Results (Day 8)
+- **34 tests pass** across 2 files:
+  - `auth.service.test.ts` — 11 tests
+  - `user.service.test.ts` — 23 tests
+
+#### Commit
+- [ ] Commit: `feat(users): module with crud, tenant scope, and service tests` (pending push)
 
 ---
 
 ## Git History
 
-### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `7577304`
+### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `9537028` (before users commit)
 
 | Hash | Message | Day |
 |---|---|---|
+| pending | feat(users): module with crud, tenant scope, and service tests | Day 8 |
+| `9537028` | docs(myLogs): day-based milestone log through phase 3c | Day 8 |
 | `7577304` | feat(auth): login, me, jwt middleware, and service tests | Day 8 |
 | `a8ac886` | feat(prisma): seed roles, permissions, and super admin | Day 5 |
 | `62e4a0c` | feat(prisma): initial migration + dev log update | Day 5 |
@@ -156,29 +211,25 @@
 
 ## Upcoming Phases
 
-### Phase 3D — Users Module (Next)
-- [ ] `src/shared/utils/scope.ts` — `buildScopeFilter` helper for tenant isolation
-- [ ] `src/modules/users/user.schema.ts`
-- [ ] `src/modules/users/user.service.ts`
-- [ ] `src/modules/users/user.controller.ts`
-- [ ] `src/modules/users/user.routes.ts`
-- [ ] `src/modules/users/__tests__/user.service.test.ts`
-- [ ] Wire into `src/app.ts` at `/api/v1/users`
+### Phase 3E — Partners Module (Next)
+- [ ] `src/modules/partners/partner.schema.ts`
+- [ ] `src/modules/partners/partner.service.ts` — onboarding, approval, suspension, listing
+- [ ] `src/modules/partners/partner.controller.ts`
+- [ ] `src/modules/partners/partner.routes.ts`
+- [ ] `src/modules/partners/__tests__/partner.service.test.ts`
+- [ ] Wire into `src/app.ts` at `/api/v1/partners`
 - [ ] Endpoints:
-  - [ ] `GET /api/v1/users` — list (scoped)
-  - [ ] `GET /api/v1/users/:id` — get one
-  - [ ] `POST /api/v1/users` — create
-  - [ ] `PATCH /api/v1/users/:id` — update
-  - [ ] `PATCH /api/v1/users/:id/status` — activate/suspend (super_admin)
-  - [ ] `PATCH /api/v1/users/:id/role` — change role (super_admin)
-
-### Phase 3E — Partners Module
-- [ ] Partner onboarding, approval, suspension
-- [ ] Endpoints: list, create, get, update, approve, reject, suspend
+  - [ ] `GET /api/v1/partners` — list (super_admin only, or own for partner_admin)
+  - [ ] `GET /api/v1/partners/:id`
+  - [ ] `POST /api/v1/partners` — onboarding request
+  - [ ] `PATCH /api/v1/partners/:id`
+  - [ ] `PATCH /api/v1/partners/:id/status` — approve/reject/suspend (super_admin)
+- [ ] Manual smoke test
+- [ ] Commit + push
 
 ### Phase 3F — Leads Module
 - [ ] CRUD + assignment + duplicate detection + status transitions
-- [ ] Tenant-scoped
+- [ ] Tenant-scoped, counselor-scoped via `buildAssignmentScope`
 
 ### Phase 3G — Follow-ups Module
 
@@ -206,7 +257,7 @@
 - Never `new PrismaClient()` outside `src/config/prisma.ts`
 - ESM: every relative import uses `.js` extension
 - Never run `npm`/`npx` from repo root — always from `backend/`
-- Use `./node_modules/.bin/prisma` — avoid `npx prisma` (it may fetch a different version)
+- Use `./node_modules/.bin/prisma` — avoid `npx prisma` (may fetch a different version)
 - Tests must run against `admission_hub_test` only
 - Env: Ubuntu + bash
 - IDE: Antigravity
