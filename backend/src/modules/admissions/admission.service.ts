@@ -33,6 +33,7 @@ import {
     PaymentStatus,
     VerificationStatus,
 } from '@prisma/client';
+import { resolveCommissionRate } from '../commissions/commission-rule.service.js';
 import type {
     CancelAdmissionInput,
     CreateAdmissionInput,
@@ -519,45 +520,30 @@ export const verifyAdmission = async (
 
         // Generate commission on VERIFIED (only)
         if (input.verificationStatus === VerificationStatus.VERIFIED) {
-            // Check if a commission record already exists
+            // Idempotency: skip if a commission record already exists
             const existingCommission = await tx.commissionRecord.findFirst({
                 where: { admissionId: admission.id },
                 select: { id: true },
             });
 
             if (!existingCommission) {
-                // Commission rule resolution: prefer course-level, else partner-level
-                const courseRule = await tx.commissionRule.findFirst({
-                    where: { courseId: admission.courseId },
-                });
-
-                let rate = 0;
-                let ruleId: string | null = null;
-
-                if (courseRule) {
-                    rate = Number(courseRule.rate);
-                    ruleId = courseRule.id;
-                } else {
-                    const partner = await tx.partner.findUnique({
-                        where: { id: admission.partnerId },
-                        select: { commissionType: true },
-                    });
-                    // Default fallback — no specific rule; use 0 to avoid surprising payouts
-                    rate = 0;
-                    ruleId = null;
-                    void partner; // reserved for future
-                }
+                // Resolve the applicable commission rule for this course.
+                // Falls back to { rate: 0, ruleId: null } if no rule is configured.
+                const resolved = await resolveCommissionRate(admission.courseId);
 
                 const baseAmount = Number(admission.fee);
-                const commissionAmount = (baseAmount * rate) / 100;
+                const commissionAmount =
+                    resolved.commissionType === 'PERCENTAGE'
+                        ? (baseAmount * resolved.rate) / 100
+                        : resolved.rate; // FLAT
 
                 await tx.commissionRecord.create({
                     data: {
                         partnerId: admission.partnerId,
                         admissionId: admission.id,
-                        ruleId,
+                        ruleId: resolved.ruleId,
                         baseAmount,
-                        commissionRate: rate,
+                        commissionRate: resolved.rate,
                         commissionAmount,
                         status: 'PENDING',
                     },

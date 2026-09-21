@@ -28,6 +28,8 @@ import { followUpRouter } from './modules/followups/followup.routes.js';
 import { admissionRouter } from './modules/admissions/admission.routes.js';
 import { courseRouter } from './modules/courses/course.routes.js';
 import { marketingAssetRouter } from './modules/marketing-assets/marketing-asset.routes.js';
+import { commissionRuleRouter } from './modules/commissions/commission-rule.routes.js';
+import { commissionRouter } from './modules/commissions/commission.routes.js';
 import { errorHandler } from './middleware/error.middleware.js';
 import { notFoundHandler } from './middleware/notFound.middleware.js';
 
@@ -107,10 +109,12 @@ export const createApp = (): Application => {
     app.use('/api/v1/admissions', admissionRouter);
     app.use('/api/v1/courses', courseRouter);
     app.use('/api/v1/marketing-assets', marketingAssetRouter);
+    app.use('/api/v1/commission-rules', commissionRuleRouter);
+    app.use('/api/v1/commissions', commissionRouter);
 
     // Future modules:
-    // app.use('/api/v1/commissions', commissionRouter);
     // app.use('/api/v1/notifications', notificationRouter);
+    // app.use('/api/v1/reports', reportRouter);
     // ...
     // --- 404 handler (must be after all routes) ---
     app.use(notFoundHandler);
