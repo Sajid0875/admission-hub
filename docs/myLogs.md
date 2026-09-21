@@ -283,8 +283,37 @@
 #### Fixes Applied
 - None — clean build
 
+---
+
+#### Phase 3J — Commissions Module
+- [x] `src/modules/commissions/commission-rule.schema.ts` — Zod schemas for rules
+- [x] `src/modules/commissions/commission-rule.service.ts` — CRUD + `resolveCommissionRate` for admissions
+- [x] `src/modules/commissions/commission-rule.controller.ts` — HTTP handlers
+- [x] `src/modules/commissions/commission-rule.routes.ts` — 5 endpoints (super_admin only)
+- [x] `src/modules/commissions/commission.schema.ts` — Zod schemas for records
+- [x] `src/modules/commissions/commission.service.ts` — state machine, scope, paidAt stamp
+- [x] `src/modules/commissions/commission.controller.ts` — HTTP handlers
+- [x] `src/modules/commissions/commission.routes.ts` — 3 endpoints
+- [x] `src/modules/admissions/admission.service.ts` — updated to use `resolveCommissionRate` (replaces rate-0 placeholder)
+- [x] Wired both routers into `src/app.ts`
+- [x] `src/modules/commissions/__tests__/commission-rule.service.test.ts` — 14 tests
+- [x] `src/modules/commissions/__tests__/commission.service.test.ts` — 14 tests
+- [x] Smoke tests passed:
+  - Super admin creates 20% commission rule for a course → 201
+  - Duplicate rule for same course → 409
+  - New lead + admission + verify → commission record auto-created with `rate: 20`, `amount: 13000` on a 65000 fee
+  - List commissions (super_admin sees all; partner_admin sees own org)
+  - PENDING → APPROVED → PAID; `paidAt` stamped on PAID
+  - Invalid transition PAID → APPROVED → 400
+  - Partner admin cannot change status → 403
+  - Partner admin filtering by `partnerId` → 403
+- [x] Commit: `1243a01 feat(commissions): rules engine and commission record lifecycle`
+
+#### Fixes Applied
+- None — clean build
+
 #### Test Results (Latest)
-- **160 tests pass** across 8 files:
+- **188 tests pass** across 10 files:
   - `auth.service.test.ts` — 11 tests
   - `user.service.test.ts` — 23 tests
   - `partner.service.test.ts` — 26 tests
@@ -293,6 +322,8 @@
   - `admission.service.test.ts` — 24 tests
   - `course.service.test.ts` — 12 tests
   - `marketing-asset.service.test.ts` — 15 tests
+  - `commission-rule.service.test.ts` — 14 tests
+  - `commission.service.test.ts` — 14 tests
 
 #### Environment Gotchas
 - Postgres occasionally stops on Ubuntu — `sudo systemctl start postgresql` before running commands
@@ -305,10 +336,12 @@
 
 ## Git History
 
-### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `7971d84`
+### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `1243a01`
 
 | Hash | Message | Phase |
 |---|---|---|
+| `1243a01` | feat(commissions): rules engine and commission record lifecycle | Phase 3J |
+| `25bd1a7` | docs(myLogs): phase 3i update through courses and marketing assets | Phase 3I |
 | `7971d84` | feat(courses+marketing): course catalog and marketing assets | Phase 3I |
 | `4221142` | docs(myLogs): phase 3h update through admissions module | Phase 3H |
 | `35a9d0d` | feat(admissions): module with admission + payment lifecycle and commission trigger | Phase 3H |
@@ -345,21 +378,29 @@
 | Admissions + Payments | 9 | 24 | Done |
 | Courses | 5 | 12 | Done |
 | Marketing Assets | 5 | 15 | Done |
-| **Total** | **47** | **160** | In progress |
+| Commission Rules | 5 | 14 | Done |
+| Commissions | 3 | 14 | Done |
+| **Total** | **55** | **188** | In progress |
 
 ---
 
 ## Upcoming Phases
 
-### Phase 3J — Commissions (Next)
-- [ ] Commission rules CRUD (super_admin)
-- [ ] Commission record lifecycle: PENDING → APPROVED → PAID
-- [ ] Payout workflows
-- [ ] Replace the placeholder rate-0 commission rule
+### Phase 3K — Notifications (Next)
+- [ ] Notification entity CRUD (list, mark read, mark all read)
+- [ ] Notification types: follow-up reminders, assignment alerts, admission updates, commission status
+- [ ] Fire-and-forget `notify()` helper used by other modules
+- [ ] Unread count endpoint for the dashboard bell
 
-### Phase 3K — Notifications
 ### Phase 3L — Reports
+- [ ] Aggregation endpoints (funnel, revenue, conversion, partner performance)
+- [ ] Dashboard endpoint (single aggregated response)
+- [ ] Export flows (CSV, then PDF)
+
 ### Phase 3M — Audit Logs
+- [ ] Audit event viewer for super_admin
+- [ ] Filter by actor, entity, action, date range
+- [ ] Append-only enforcement (no delete/update routes)
 
 ---
 
