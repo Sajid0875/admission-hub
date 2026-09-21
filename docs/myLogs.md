@@ -4,7 +4,7 @@
 
 ## Start Date: 13 September 2026
 
-## End Date: --/--/----
+## End Date: 22 September 2026
 
 ## System Design Reference: https://strata-void-73605916.figma.site/
 
@@ -22,6 +22,7 @@
 - **Git Branch**: `dev_Sohaim`
 - **Developer Identity**: `s0a1m0x01` (`cx3eno@gmail.com`)
 - **Workspace**: `admission-hub/` (monorepo) — backend lives in `backend/`
+- **Status**: **Backend MVP COMPLETE** — all 13 modules shipped, 235 tests passing
 
 ---
 
@@ -358,8 +359,31 @@
 #### Fixes Applied
 - Added `countOf()` and `sumOf()` helpers to normalize Prisma `groupBy` typing (`_count` union type and `_sum` optional)
 
-#### Test Results (Latest)
-- **221 tests pass** across 12 files:
+---
+
+#### Phase 3M — Audit Logs Module
+- [x] `src/shared/utils/audit.ts` — `logAction()` fire-and-forget helper + `AuditAction` constants
+- [x] `src/modules/audit/audit.schema.ts` — Zod schemas for list filters
+- [x] `src/modules/audit/audit.service.ts` — read-only list + get-by-id
+- [x] `src/modules/audit/audit.controller.ts` — HTTP handlers
+- [x] `src/modules/audit/audit.routes.ts` — 2 endpoints (super_admin only, append-only)
+- [x] Wired `auditRouter` into `src/app.ts`
+- [x] `src/modules/audit/__tests__/audit.service.test.ts` — 14 tests
+- [x] Smoke tests passed:
+  - Inserted audit logs via psql
+  - SUPER list → 3 items, newest first, JSON diffs preserved
+  - Filter by action / entityType / actorId
+  - Get one by id → full record
+  - Partner admin blocked → 403
+  - No POST route → 404
+  - No DELETE route → 404
+- [x] Commit: `b6c5580 feat(audit): append-only audit log viewer + logAction helper`
+
+#### Fixes Applied
+- None — clean build
+
+#### Test Results (Final)
+- **235 tests pass** across 13 files:
   - `auth.service.test.ts` — 11 tests
   - `user.service.test.ts` — 23 tests
   - `partner.service.test.ts` — 26 tests
@@ -372,6 +396,7 @@
   - `commission.service.test.ts` — 14 tests
   - `notification.service.test.ts` — 14 tests
   - `report.service.test.ts` — 19 tests
+  - `audit.service.test.ts` — 14 tests
 
 #### Environment Gotchas
 - Postgres occasionally stops on Ubuntu — `sudo systemctl start postgresql` before running commands
@@ -385,10 +410,12 @@
 
 ## Git History
 
-### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `59bf577`
+### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `b6c5580`
 
 | Hash | Message | Phase |
 |---|---|---|
+| `b6c5580` | feat(audit): append-only audit log viewer + logAction helper | Phase 3M |
+| `628c50a` | docs(myLogs): phase 3l update through reports module | Phase 3L |
 | `59bf577` | feat(reports): aggregate reporting endpoints + CSV export | Phase 3L |
 | `c2911f9` | docs(myLogs): phase 3k update through notifications module | Phase 3K |
 | `715deae` | feat(notifications): in-app notification center | Phase 3K |
@@ -419,7 +446,7 @@
 
 ---
 
-## Progress Summary
+## Progress Summary — Final
 
 | Module | Endpoints | Tests | Status |
 |---|---|---|---|
@@ -435,16 +462,24 @@
 | Commissions | 3 | 14 | Done |
 | Notifications | 4 | 14 | Done |
 | Reports | 9 | 19 | Done |
-| **Total** | **68** | **221** | In progress |
+| Audit Logs | 2 | 14 | Done |
+| **Total** | **70** | **235** | **100% COMPLETE** |
 
 ---
 
-## Upcoming Phases
+## Post-MVP Backlog (Not Part of SRS Phase 1 + 2)
 
-### Phase 3M — Audit Logs (Final Module)
-- [ ] Audit event viewer for super_admin
-- [ ] Filter by actor, entity, action, date range
-- [ ] Append-only (no delete/update routes)
+These are optional follow-ups that would enhance the backend but are not required by the MVP scope:
+
+- **Wire `logAction()` into existing modules** — currently the helper exists but isn't called from partner/user/admission/commission services
+- **Wire `notify()` into existing modules** — same: helper exists, not yet called
+- **OpenAPI / Swagger spec** — auto-generated documentation from Zod schemas
+- **Rate limiting on non-auth routes** — currently only `/api/auth/*` has rate limiting
+- **Refresh tokens** — currently only short-lived access tokens
+- **Redis-backed background jobs** — follow-up reminders, notification fanout
+- **PDF export** — reports currently export CSV only
+- **Docker / Kubernetes manifests** — for production deployment
+- **CI/CD pipeline** — GitHub Actions for tests + deploy
 
 ---
 
