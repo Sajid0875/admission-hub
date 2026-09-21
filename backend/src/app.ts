@@ -32,6 +32,7 @@ import { commissionRuleRouter } from './modules/commissions/commission-rule.rout
 import { commissionRouter } from './modules/commissions/commission.routes.js';
 import { notificationRouter } from './modules/notifications/notification.routes.js';
 import { reportRouter } from './modules/reports/report.routes.js';
+import { auditRouter } from './modules/audit/audit.routes.js';
 import { errorHandler } from './middleware/error.middleware.js';
 import { notFoundHandler } from './middleware/notFound.middleware.js';
 
@@ -115,10 +116,10 @@ export const createApp = (): Application => {
     app.use('/api/v1/commissions', commissionRouter);
     app.use('/api/v1/notifications', notificationRouter);
     app.use('/api/v1/reports', reportRouter);
+    app.use('/api/v1/audit-logs', auditRouter);
 
-    // Future modules:
-    // app.use('/api/v1/audit-logs', auditLogRouter);
-    // ...
+    // All planned modules have been mounted.
+    // Future work: wire notify() and logAction() into existing services.
     // --- 404 handler (must be after all routes) ---
     app.use(notFoundHandler);
 
