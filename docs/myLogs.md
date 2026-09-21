@@ -336,8 +336,30 @@
 #### Fixes Applied
 - None — clean build
 
+---
+
+#### Phase 3L — Reports Module
+- [x] `src/modules/reports/report.schema.ts` — Zod schemas for query params
+- [x] `src/modules/reports/report.service.ts` — query-time aggregation, CSV generation, helpers
+- [x] `src/modules/reports/report.controller.ts` — HTTP handlers
+- [x] `src/modules/reports/report.routes.ts` — 9 endpoints (super_admin + partner_admin only)
+- [x] Wired `reportRouter` into `src/app.ts`
+- [x] `src/modules/reports/__tests__/report.service.test.ts` — 19 tests
+- [x] Smoke tests passed:
+  - Dashboard: summary + funnel + trend
+  - Leads/Admissions/Revenue/Conversion/Commissions reports return correct aggregates
+  - Partners report: per-partner numbers
+  - Courses report: per-course admission counts + revenue
+  - Partner admin scoped to own org
+  - Partner admin blocked from partners report → 403
+  - CSV export: `Content-Type: text/csv` + `Content-Disposition: attachment`
+- [x] Commit: `59bf577 feat(reports): aggregate reporting endpoints + CSV export`
+
+#### Fixes Applied
+- Added `countOf()` and `sumOf()` helpers to normalize Prisma `groupBy` typing (`_count` union type and `_sum` optional)
+
 #### Test Results (Latest)
-- **202 tests pass** across 11 files:
+- **221 tests pass** across 12 files:
   - `auth.service.test.ts` — 11 tests
   - `user.service.test.ts` — 23 tests
   - `partner.service.test.ts` — 26 tests
@@ -349,6 +371,7 @@
   - `commission-rule.service.test.ts` — 14 tests
   - `commission.service.test.ts` — 14 tests
   - `notification.service.test.ts` — 14 tests
+  - `report.service.test.ts` — 19 tests
 
 #### Environment Gotchas
 - Postgres occasionally stops on Ubuntu — `sudo systemctl start postgresql` before running commands
@@ -356,15 +379,18 @@
 - Placeholder values (`<paste-...>`) accidentally assigned to shell vars — sanity check with `echo "$VAR"` first
 - `git commit` without `git add` silently does nothing — always check `git status` between add and commit
 - Windows CRLF leaked into curl JSON payloads — write JSON to a temp file with a heredoc and use `-d @/tmp/file.json`
+- Prisma v5 `groupBy` `_count._all` is typed as `true | { _all?: number }` — normalize via a `countOf()` helper
 
 ---
 
 ## Git History
 
-### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `715deae`
+### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `59bf577`
 
 | Hash | Message | Phase |
 |---|---|---|
+| `59bf577` | feat(reports): aggregate reporting endpoints + CSV export | Phase 3L |
+| `c2911f9` | docs(myLogs): phase 3k update through notifications module | Phase 3K |
 | `715deae` | feat(notifications): in-app notification center | Phase 3K |
 | `5d434a6` | docs(myLogs): phase 3j update through commissions module | Phase 3J |
 | `1243a01` | feat(commissions): rules engine and commission record lifecycle | Phase 3J |
@@ -408,21 +434,17 @@
 | Commission Rules | 5 | 14 | Done |
 | Commissions | 3 | 14 | Done |
 | Notifications | 4 | 14 | Done |
-| **Total** | **59** | **202** | In progress |
+| Reports | 9 | 19 | Done |
+| **Total** | **68** | **221** | In progress |
 
 ---
 
 ## Upcoming Phases
 
-### Phase 3L — Reports (Next)
-- [ ] Aggregation endpoints (funnel, revenue, conversion, partner performance)
-- [ ] Dashboard endpoint (single aggregated response)
-- [ ] Export flows (CSV, then PDF)
-
-### Phase 3M — Audit Logs
+### Phase 3M — Audit Logs (Final Module)
 - [ ] Audit event viewer for super_admin
 - [ ] Filter by actor, entity, action, date range
-- [ ] Append-only enforcement (no delete/update routes)
+- [ ] Append-only (no delete/update routes)
 
 ---
 
