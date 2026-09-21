@@ -31,6 +31,7 @@ import { marketingAssetRouter } from './modules/marketing-assets/marketing-asset
 import { commissionRuleRouter } from './modules/commissions/commission-rule.routes.js';
 import { commissionRouter } from './modules/commissions/commission.routes.js';
 import { notificationRouter } from './modules/notifications/notification.routes.js';
+import { reportRouter } from './modules/reports/report.routes.js';
 import { errorHandler } from './middleware/error.middleware.js';
 import { notFoundHandler } from './middleware/notFound.middleware.js';
 
@@ -113,9 +114,9 @@ export const createApp = (): Application => {
     app.use('/api/v1/commission-rules', commissionRuleRouter);
     app.use('/api/v1/commissions', commissionRouter);
     app.use('/api/v1/notifications', notificationRouter);
+    app.use('/api/v1/reports', reportRouter);
 
     // Future modules:
-    // app.use('/api/v1/reports', reportRouter);
     // app.use('/api/v1/audit-logs', auditLogRouter);
     // ...
     // --- 404 handler (must be after all routes) ---
