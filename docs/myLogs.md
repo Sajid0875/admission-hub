@@ -312,8 +312,32 @@
 #### Fixes Applied
 - None — clean build
 
+---
+
+#### Phase 3K — Notifications Module
+- [x] `src/shared/utils/notify.ts` — fire-and-forget notification helper
+- [x] `src/modules/notifications/notification.schema.ts` — Zod schemas for filters
+- [x] `src/modules/notifications/notification.service.ts` — own-user scope, idempotent mark read, unread count
+- [x] `src/modules/notifications/notification.controller.ts` — HTTP handlers
+- [x] `src/modules/notifications/notification.routes.ts` — 4 endpoints (literal paths before params)
+- [x] Wired `notificationRouter` into `src/app.ts`
+- [x] `src/modules/notifications/__tests__/notification.service.test.ts` — 14 tests
+- [x] Smoke tests passed:
+  - Inserted notifications directly via psql (no create endpoint by design)
+  - SUPER list → 2 items, `unreadCount: 2`
+  - ALICE list → 1 item (her own only)
+  - Cross-user mark read → 404
+  - Mark one read → `readAt` stamped
+  - Unread count → decremented
+  - Mark all read → `updated: 1`
+  - Unread count → 0
+- [x] Commit: `715deae feat(notifications): in-app notification center`
+
+#### Fixes Applied
+- None — clean build
+
 #### Test Results (Latest)
-- **188 tests pass** across 10 files:
+- **202 tests pass** across 11 files:
   - `auth.service.test.ts` — 11 tests
   - `user.service.test.ts` — 23 tests
   - `partner.service.test.ts` — 26 tests
@@ -324,6 +348,7 @@
   - `marketing-asset.service.test.ts` — 15 tests
   - `commission-rule.service.test.ts` — 14 tests
   - `commission.service.test.ts` — 14 tests
+  - `notification.service.test.ts` — 14 tests
 
 #### Environment Gotchas
 - Postgres occasionally stops on Ubuntu — `sudo systemctl start postgresql` before running commands
@@ -336,10 +361,12 @@
 
 ## Git History
 
-### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `1243a01`
+### Branch: `dev_Sohaim` — HEAD = `origin/dev_Sohaim` = `715deae`
 
 | Hash | Message | Phase |
 |---|---|---|
+| `715deae` | feat(notifications): in-app notification center | Phase 3K |
+| `5d434a6` | docs(myLogs): phase 3j update through commissions module | Phase 3J |
 | `1243a01` | feat(commissions): rules engine and commission record lifecycle | Phase 3J |
 | `25bd1a7` | docs(myLogs): phase 3i update through courses and marketing assets | Phase 3I |
 | `7971d84` | feat(courses+marketing): course catalog and marketing assets | Phase 3I |
@@ -380,19 +407,14 @@
 | Marketing Assets | 5 | 15 | Done |
 | Commission Rules | 5 | 14 | Done |
 | Commissions | 3 | 14 | Done |
-| **Total** | **55** | **188** | In progress |
+| Notifications | 4 | 14 | Done |
+| **Total** | **59** | **202** | In progress |
 
 ---
 
 ## Upcoming Phases
 
-### Phase 3K — Notifications (Next)
-- [ ] Notification entity CRUD (list, mark read, mark all read)
-- [ ] Notification types: follow-up reminders, assignment alerts, admission updates, commission status
-- [ ] Fire-and-forget `notify()` helper used by other modules
-- [ ] Unread count endpoint for the dashboard bell
-
-### Phase 3L — Reports
+### Phase 3L — Reports (Next)
 - [ ] Aggregation endpoints (funnel, revenue, conversion, partner performance)
 - [ ] Dashboard endpoint (single aggregated response)
 - [ ] Export flows (CSV, then PDF)
