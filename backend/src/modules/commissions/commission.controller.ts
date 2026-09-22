@@ -15,6 +15,7 @@
 import type { Request, Response } from 'express';
 import {
     ChangeCommissionStatusSchema,
+    CommissionSummaryQuerySchema,
     ListCommissionsQuerySchema,
 } from './commission.schema.js';
 import * as commissionService from './commission.service.js';
@@ -46,6 +47,22 @@ export const listCommissionsHandler = async (
     const result = await commissionService.listCommissions(actor, query);
 
     res.status(200).json(result);
+};
+
+// --------------------------------------------------
+// GET /api/v1/commissions/summary
+// --------------------------------------------------
+
+export const getCommissionSummaryHandler = async (
+    req: Request,
+    res: Response,
+): Promise<void> => {
+    const actor = requireActor(req);
+    const query = CommissionSummaryQuerySchema.parse(req.query);
+
+    const summary = await commissionService.getCommissionSummary(actor, query);
+
+    res.status(200).json({ summary });
 };
 
 // --------------------------------------------------
