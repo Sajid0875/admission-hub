@@ -70,6 +70,8 @@ Login returns a short-lived JWT (`token`) plus an opaque `refreshToken` (hashed 
 `POST /api/v1/auth/refresh` rotates the pair; `POST /api/v1/auth/logout` revokes the refresh token.  
 Defaults: access `15m`, refresh `30d` (`JWT_EXPIRES_IN` / `JWT_REFRESH_EXPIRES_IN`).
 
+Interactive API docs: http://localhost:4000/api/v1/docs (OpenAPI JSON: `/api/v1/openapi.json`).
+
 ## Roles
 
 - Super Admin
