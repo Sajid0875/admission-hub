@@ -619,7 +619,7 @@ npm run prisma:seed
 - Redis-backed job queue (in-process follow-up reminders ship for MVP; Redis still optional at scale)
 - PDF export (CSV only today)
 - Kubernetes manifests (Docker Compose ships for local)
-- Real WhatsApp provider (Meta/Twilio) — stub only today
+- Real WhatsApp provider (Meta/Twilio) — Meta Cloud API wired; Twilio still future
 - Aikido security scan MCP (not configured in this environment)
 
 **Done after PR #2 merge (23 Sep 2026):**
@@ -630,6 +630,7 @@ npm run prisma:seed
 - [x] OpenAPI scaffold + Swagger UI at `/api/v1/docs` and `/api/v1/openapi.json`
 - [x] In-process follow-up reminder scanner (`FOLLOWUP_*` env) with idempotent notifications
 - [x] WhatsApp adapter stub (`WHATSAPP_ENABLED`, logs only)
+- [x] WhatsApp Meta Cloud API provider (`WHATSAPP_PROVIDER=meta` + token/phone-number-id)
 - [x] `GET /commissions/summary` + FE live wiring (replaces client-side list derive)
 - [x] Docker Compose (Postgres + API + FE) + live E2E script on main
 
@@ -784,6 +785,8 @@ Refresh tokens (login issues hashed refresh; `/auth/refresh` rotation; `/auth/lo
 PR #7 merged to `main`. OpenAPI deepened to full route surface (v1.1.0, 57 paths / 76 ops): **23 Sep 2026**.
 PR #8 merged to `main` (OpenAPI deepen): **23 Sep 2026**.
 PDF export for leads/admissions (`format=pdf` on `/reports/export`): **23 Sep 2026**.
+PR #9 merged to `main` (PDF export): **23 Sep 2026**.
+WhatsApp Meta Cloud API adapter (env-selected; stub default): **23 Sep 2026**.
 
 ---
 
@@ -802,9 +805,17 @@ PDF export for leads/admissions (`format=pdf` on `/reports/export`): **23 Sep 20
 - Swagger UI at `/api/v1/docs` picks this up automatically (static JSON)
 - Commit: `1cbc46f` → merged via PR #8
 
-### PDF report export (this commit → PR)
+### PDF report export (PR #9 merged)
 - `GET /reports/export?report=leads|admissions&format=csv|pdf` (default csv, backward compatible)
 - Zero-dep PDF table builder (`shared/utils/pdfTable.ts`) — no new npm packages
 - FE Reports page: Leads/Admissions CSV + PDF buttons
 - Unit tests: `pdfTable.test.ts` **4/4 pass**; service PDF case added (needs DB)
 - OpenAPI export docs updated for `format` + `application/pdf`
+- Commit: `dde77e4` → merged via PR #9
+
+### WhatsApp Meta provider (this commit → PR)
+- `WHATSAPP_PROVIDER=stub|meta` — Meta Cloud API via native `fetch` (no new deps)
+- Env: `WHATSAPP_META_ACCESS_TOKEN`, `WHATSAPP_META_PHONE_NUMBER_ID`, `WHATSAPP_META_API_VERSION`
+- Missing Meta creds → warn + stub fallback; disabled → skipped
+- Phone normalize to digits; unit tests for phone + Meta adapter (mocked fetch)
+- Follow-up reminder job already calls `whatsapp.sendText` — picks up live adapter automatically

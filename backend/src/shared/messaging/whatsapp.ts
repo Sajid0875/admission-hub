@@ -1,37 +1,35 @@
 /**
- * whatsapp.ts - Messaging adapter for WhatsApp (stub).
+ * whatsapp.ts - Messaging adapter for WhatsApp.
  *
- * Real provider wiring (Meta Cloud API / Twilio) stays out of MVP.
- * Callers use this interface so swapping the stub later is a one-file change.
+ * Providers:
+ *   - stub  — logs only (default; safe for local/CI)
+ *   - meta  — Meta Cloud API when token + phone-number-id are set
+ *
+ * Selection: WHATSAPP_PROVIDER + credentials. Missing Meta creds fall back to stub.
  */
 
 import { randomUUID } from 'node:crypto';
 import { logger } from '../../config/logger.js';
 import { env } from '../../config/env.js';
+import { createMetaWhatsAppAdapter } from './whatsappMeta.js';
+import type {
+    WhatsAppAdapter,
+    WhatsAppSendInput,
+    WhatsAppSendResult,
+} from './whatsappTypes.js';
 
-export interface WhatsAppSendInput {
-    to: string;
-    body: string;
-    metadata?: Record<string, unknown>;
-}
-
-export interface WhatsAppSendResult {
-    ok: boolean;
-    skipped?: boolean;
-    providerMessageId?: string;
-    reason?: string;
-}
-
-export interface WhatsAppAdapter {
-    sendText(input: WhatsAppSendInput): Promise<WhatsAppSendResult>;
-}
+export type {
+    WhatsAppAdapter,
+    WhatsAppSendInput,
+    WhatsAppSendResult,
+} from './whatsappTypes.js';
 
 /**
  * Logs the intended WhatsApp payload and returns a fake message id.
  * Never calls an external network. Safe for local/dev/CI.
  */
 export const whatsappStub: WhatsAppAdapter = {
-    async sendText(input) {
+    async sendText(input: WhatsAppSendInput): Promise<WhatsAppSendResult> {
         if (!env.WHATSAPP_ENABLED) {
             logger.debug(
                 { to: input.to, metadata: input.metadata },
@@ -55,5 +53,32 @@ export const whatsappStub: WhatsAppAdapter = {
     },
 };
 
-/** Active adapter — swap here when a real provider is configured. */
-export const whatsapp: WhatsAppAdapter = whatsappStub;
+/**
+ * Pick the active adapter from env.
+ * Exported for tests so they can re-resolve after env changes if needed.
+ */
+export const createWhatsAppAdapter = (): WhatsAppAdapter => {
+    if (env.WHATSAPP_PROVIDER === 'meta') {
+        const hasCreds =
+            env.WHATSAPP_META_ACCESS_TOKEN.length > 0 &&
+            env.WHATSAPP_META_PHONE_NUMBER_ID.length > 0;
+
+        if (!hasCreds) {
+            logger.warn(
+                'WHATSAPP_PROVIDER=meta but token/phone-number-id missing — using stub',
+            );
+            return whatsappStub;
+        }
+
+        logger.info(
+            { provider: 'whatsapp-meta', apiVersion: env.WHATSAPP_META_API_VERSION },
+            'whatsapp adapter: Meta Cloud API',
+        );
+        return createMetaWhatsAppAdapter();
+    }
+
+    return whatsappStub;
+};
+
+/** Active adapter — resolved once at module load. */
+export const whatsapp: WhatsAppAdapter = createWhatsAppAdapter();

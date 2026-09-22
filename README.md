@@ -72,6 +72,15 @@ Defaults: access `15m`, refresh `30d` (`JWT_EXPIRES_IN` / `JWT_REFRESH_EXPIRES_I
 
 Interactive API docs: http://localhost:4000/api/v1/docs (OpenAPI JSON: `/api/v1/openapi.json`).
 
+## WhatsApp
+
+Follow-up reminders can fan out WhatsApp text via an adapter:
+
+- Default: `WHATSAPP_PROVIDER=stub` (logs only; safe for local/CI)
+- Live: set `WHATSAPP_ENABLED=true`, `WHATSAPP_PROVIDER=meta`, plus Meta Cloud API `WHATSAPP_META_ACCESS_TOKEN` and `WHATSAPP_META_PHONE_NUMBER_ID`
+
+Missing Meta credentials fall back to the stub with a warning.
+
 ## Roles
 
 - Super Admin

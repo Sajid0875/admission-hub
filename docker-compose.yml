@@ -50,6 +50,9 @@ services:
       FOLLOWUP_REMINDER_INTERVAL_MS: "60000"
       FOLLOWUP_DUE_SOON_MINUTES: "60"
       WHATSAPP_ENABLED: "false"
+      WHATSAPP_PROVIDER: stub
+      # WHATSAPP_META_ACCESS_TOKEN / WHATSAPP_META_PHONE_NUMBER_ID for live Meta sends
+
       RUN_SEED: "true"
     ports:
       - "4000:4000"
