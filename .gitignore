@@ -8,6 +8,7 @@ dist/
 .next/
 *.log
 *.tsbuildinfo
+.DS_Store
 
 .env
 .env.local
@@ -15,3 +16,5 @@ dist/
 
 # Nested frontend tooling / generated analysis (keep out of monorepo)
 frontend/graphify-out/
+frontend/Partner_Portal_Frontend_Phase_Prompts.pdf
+frontend/stitch_nexus_admission_crm/
