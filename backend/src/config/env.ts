@@ -47,11 +47,15 @@ const EnvSchema = z.object({
         .default(60_000),
     FOLLOWUP_DUE_SOON_MINUTES: z.coerce.number().int().positive().default(60),
 
-    // WhatsApp stub — when true, stub still only logs (no external send).
+    // WhatsApp — stub by default; set PROVIDER=meta + credentials for live sends.
     WHATSAPP_ENABLED: z
         .enum(['true', 'false'])
         .default('false')
         .transform((v) => v === 'true'),
+    WHATSAPP_PROVIDER: z.enum(['stub', 'meta']).default('stub'),
+    WHATSAPP_META_ACCESS_TOKEN: z.string().default(''),
+    WHATSAPP_META_PHONE_NUMBER_ID: z.string().default(''),
+    WHATSAPP_META_API_VERSION: z.string().default('v21.0'),
 });
 
 const parsed = EnvSchema.safeParse(process.env);
