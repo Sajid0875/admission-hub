@@ -24,6 +24,7 @@ import type {
     ExportReportQuery,
     ReportRangeQuery,
 } from './report.schema.js';
+import { buildPdfTable } from '../../shared/utils/pdfTable.js';
 
 // --------------------------------------------------
 // Scope resolution
@@ -806,13 +807,13 @@ export const getCoursesReport = async (
 };
 
 // --------------------------------------------------
-// CSV export
+// CSV / PDF export
 // --------------------------------------------------
 
 export interface ExportResult {
     filename: string;
     contentType: string;
-    body: string;
+    body: string | Buffer;
 }
 
 export const exportReport = async (
@@ -824,6 +825,7 @@ export const exportReport = async (
     const createdFilter = buildDateRange(query.from, query.to);
 
     const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    const format = query.format ?? 'csv';
 
     if (query.report === 'leads') {
         const where: Record<string, unknown> = {
@@ -864,6 +866,21 @@ export const exportReport = async (
             createdAt: l.createdAt.toISOString(),
         }));
 
+        if (format === 'pdf') {
+            return {
+                filename: `leads-${timestamp}.pdf`,
+                contentType: 'application/pdf',
+                body: buildPdfTable({
+                    title: 'Admission Hub — Leads Export',
+                    subtitle: `Generated ${new Date().toISOString()} · ${rows.length} row(s)`,
+                    headers,
+                    rows: rows.map((r) =>
+                        headers.map((h) => String((r as Record<string, unknown>)[h] ?? '')),
+                    ),
+                }),
+            };
+        }
+
         return {
             filename: `leads-${timestamp}.csv`,
             contentType: 'text/csv; charset=utf-8',
@@ -903,6 +920,21 @@ export const exportReport = async (
         joiningDate: a.joiningDate.toISOString(),
         createdAt: a.createdAt.toISOString(),
     }));
+
+    if (format === 'pdf') {
+        return {
+            filename: `admissions-${timestamp}.pdf`,
+            contentType: 'application/pdf',
+            body: buildPdfTable({
+                title: 'Admission Hub — Admissions Export',
+                subtitle: `Generated ${new Date().toISOString()} · ${rows.length} row(s)`,
+                headers,
+                rows: rows.map((r) =>
+                    headers.map((h) => String((r as Record<string, unknown>)[h] ?? '')),
+                ),
+            }),
+        };
+    }
 
     return {
         filename: `admissions-${timestamp}.csv`,

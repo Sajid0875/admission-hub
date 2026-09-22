@@ -10,7 +10,7 @@
  *   - Commissions report        (GET /reports/commissions)
  *   - Partners report           (GET /reports/partners)   — super_admin only
  *   - Courses report            (GET /reports/courses)
- *   - CSV export                (GET /reports/export)
+ *   - CSV / PDF export          (GET /reports/export)
  *
  * Notes:
  *   - Reports are computed at query time — no caching table.
@@ -80,8 +80,12 @@ export type DashboardQuery = z.infer<typeof DashboardQuerySchema>;
 export const EXPORTABLE_REPORTS = ['leads', 'admissions'] as const;
 export type ExportableReport = (typeof EXPORTABLE_REPORTS)[number];
 
+export const EXPORT_FORMATS = ['csv', 'pdf'] as const;
+export type ExportFormat = (typeof EXPORT_FORMATS)[number];
+
 export const ExportReportQuerySchema = ReportRangeQuerySchema.extend({
     report: z.enum(EXPORTABLE_REPORTS),
+    format: z.enum(EXPORT_FORMATS).default('csv'),
 });
 
 export type ExportReportQuery = z.infer<typeof ExportReportQuerySchema>;

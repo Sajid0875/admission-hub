@@ -525,7 +525,7 @@ describe('reportService.exportReport', () => {
 
         expect(result.contentType).toBe('text/csv; charset=utf-8');
         expect(result.filename).toMatch(/^leads-.*\.csv$/);
-        expect(result.body.split('\n')[0]).toContain('id,name,phone,email');
+        expect(String(result.body).split('\n')[0]).toContain('id,name,phone,email');
     });
 
     it('exports admissions as CSV with headers', async () => {
@@ -537,7 +537,7 @@ describe('reportService.exportReport', () => {
         );
 
         expect(result.filename).toMatch(/^admissions-.*\.csv$/);
-        expect(result.body.split('\n')[0]).toContain(
+        expect(String(result.body).split('\n')[0]).toContain(
             'id,studentName,fee,paymentStatus',
         );
     });
@@ -551,7 +551,23 @@ describe('reportService.exportReport', () => {
         );
 
         // Count data rows (excluding header)
-        const lines = result.body.split('\n').filter((l) => l.trim() !== '');
+        const lines = String(result.body)
+            .split('\n')
+            .filter((l) => l.trim() !== '');
         expect(lines.length - 1).toBe(2); // 2 admissions for partner A
+    });
+
+    it('exports leads as PDF when format=pdf', async () => {
+        const f = await seedFx();
+
+        const result = await reportService.exportReport(
+            asSuperAdmin(f.superAdminId),
+            { report: 'leads', groupBy: 'day', format: 'pdf' },
+        );
+
+        expect(result.contentType).toBe('application/pdf');
+        expect(result.filename).toMatch(/^leads-.*\.pdf$/);
+        expect(Buffer.isBuffer(result.body)).toBe(true);
+        expect((result.body as Buffer).subarray(0, 5).toString('utf8')).toBe('%PDF-');
     });
 });
