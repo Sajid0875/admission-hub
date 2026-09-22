@@ -6,12 +6,34 @@ Multi-tenant partner admissions CRM and reporting platform for WhiteDavid23 Acad
 
 ```text
 admission-hub/
-├── backend/    # Express + Prisma + PostgreSQL API (:4000)
-├── frontend/   # Next.js App Router UI (:3000)
-└── docs/       # Specs, handover, and engineering logs
+├── backend/           # Express + Prisma + PostgreSQL API (:4000)
+├── frontend/          # Next.js App Router UI (:3000)
+├── docs/              # Specs, handover, and engineering logs
+└── docker-compose.yml # One-command local stack
 ```
 
-## Quick start
+## Quick start (Docker)
+
+```bash
+docker compose up --build
+```
+
+- UI: http://localhost:3000  
+- API health: http://localhost:4000/health  
+- OpenAPI: http://localhost:4000/api/v1/docs  
+
+Seeded QA logins:
+
+| Role | Email | Password |
+|---|---|---|
+| Super Admin | `admin@whitedavid23.local` | `ChangeMe!Adm1n2026` |
+| Partner Admin | `partner@whitedavid23.com` | `ChangeMe!Partner2026` |
+| Counselor | `counselor@whitedavid23.com` | `ChangeMe!Counselor2026` |
+| Support | `support@whitedavid23.com` | `ChangeMe!Support2026` |
+
+Stop with `docker compose down`. Add `-v` to also drop the Postgres volume.
+
+## Quick start (local Node)
 
 ```bash
 # Backend
@@ -24,9 +46,22 @@ npm run dev
 
 # Frontend (separate terminal)
 cd frontend
-cp .env.example .env.local   # NEXT_PUBLIC_API_URL=http://localhost:4000
+cp .env.example .env.local   # NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
 npm install
 npm run dev
+```
+
+## Tests
+
+```bash
+# Backend unit/service tests (needs admission_hub_test DB)
+cd backend && npm test
+
+# Live API E2E (API must be running on :4000)
+cd backend && npm run test:e2e
+
+# Frontend mock smoke
+cd frontend && npm run test:smoke
 ```
 
 ## Roles
