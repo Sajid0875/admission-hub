@@ -790,6 +790,7 @@ PR #9 merged to `main` (PDF export): **23 Sep 2026**.
 WhatsApp Meta Cloud API adapter (env-selected; stub default): **23 Sep 2026**.
 PR #10 merged to `main` (WhatsApp Meta provider): **23 Sep 2026**.
 Twilio WhatsApp provider (`WHATSAPP_PROVIDER=twilio`): **23 Sep 2026**.
+PR #11 merged to `main` (Twilio WhatsApp): **23 Sep 2026**.
 
 ---
 
