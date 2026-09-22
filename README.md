@@ -1,33 +1,43 @@
 # Admission Hub
 
-Development repository for Admission Hub, a partner admissions CRM and reporting platform.
+Multi-tenant partner admissions CRM and reporting platform for WhiteDavid23 Academy.
 
-The planned product is a responsive, multi-tenant admissions CRM for `super admins`, `partner admins`, `counselors`, and `support` users. Its scope includes `lead` and `follow-up management`, `admissions`, `courses`, `marketing assets`, `commissions`, `reporting`, `notifications`, and `audit logs`.
+## Layout
 
-## Project documents
+```text
+admission-hub/
+├── backend/    # Express + Prisma + PostgreSQL API (:4000)
+├── frontend/   # Next.js App Router UI (:3000)
+└── docs/       # Specs, handover, and engineering logs
+```
 
-- [Partner Portal](docs/WhiteDavid23_Academy_Project_Keystone.pdf)
+## Quick start
+
+```bash
+# Backend
+cd backend
+cp .env.example .env   # set DATABASE_URL + JWT_SECRET
+npm install
+npx prisma migrate dev
+npm run prisma:seed
+npm run dev
+
+# Frontend (separate terminal)
+cd frontend
+cp .env.example .env.local   # NEXT_PUBLIC_API_URL=http://localhost:4000
+npm install
+npm run dev
+```
+
+## Roles
+
+- Super Admin
+- Partner Admin
+- Counselor / Team Member
+- Support
+
+## Docs
+
 - [Developer Handover Pack](docs/developer-handover-pack.pdf)
 - [Software Requirements Specification](docs/software-requirements-specification.pdf)
-
-## Suggested MVP
-
-- Role-based authentication and tenant isolation
-- Partner dashboard
-- Lead and follow-up management
-- Admissions and courses
-- Commissions
-- Reports and notifications
-
-## Suggested technology stack
-
-- `Frontend`: React or Next.js with Tailwind CSS
-- `Backend`: Node.js with Express
-- `Database`: PostgreSQL or MongoDB
-- `Authentication`: JWT with role-based access control
-
-## Reference
-
-`Link`: [System Design Architecture](https://strata-void-73605916.figma.site)
-
-Implementation has not started yet. The documents in `docs` are the source of truth for product scope and acceptance criteria.
+- [Engineering log](docs/myLogs.md)
