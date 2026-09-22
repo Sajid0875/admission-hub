@@ -797,8 +797,6 @@ PA `GET /reports/export?report=leads` and `admissions` → 200 `text/csv` with C
 
 ---
 
-## Full Stack Integration End Date: **23 September 2026**
-
 Core role E2E + backend module suite: **23 Sep 2026**.  
 Phase-2 FE polish (courses, marketing, notifications, commission rules): **23 Sep 2026**.  
 PR #2 merged to `main`; hardening (CI, rate limits, OpenAPI) + Phase-3 reminders/WhatsApp stub: **23 Sep 2026**.  
@@ -890,3 +888,5 @@ Docs pass (GETTING_STARTED / DEPLOY / local secrets): **23 Sep 2026**.
 - Guides: `docs/GETTING_STARTED.md` (clone→run), `docs/DEPLOY.md` (Railway primary + Render/Vercel alt), root `README.md`, `frontend/README.md`, `local/README.md`
 - Compose / `render.yaml` headers point at those docs
 - Seeded QA credentials documented in README / GETTING_STARTED / railway notes template (change before real users)
+
+## Full Stack Integration End Date: **23 September 2026**
