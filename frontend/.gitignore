@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+node_modules/
+.next/
+dist/
+build/
+coverage/
+*.log
+*.tsbuildinfo
+.DS_Store
+Partner_Portal_Frontend_Phase_Prompts.pdf
+stitch_nexus_admission_crm

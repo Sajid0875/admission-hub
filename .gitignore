@@ -1,12 +1,20 @@
+### Ignore case ###
+.agents
+.cursor
 .env
-.env.*
-!.env.example
+
 node_modules/
-.next/
 dist/
-build/
-coverage/
+.next/
 *.log
+*.tsbuildinfo
 .DS_Store
-Partner_Portal_Frontend_Phase_Prompts.pdf
-stitch_nexus_admission_crm
+
+.env
+.env.local
+.env.*.local
+
+# Nested frontend tooling / generated analysis (keep out of monorepo)
+frontend/graphify-out/
+frontend/Partner_Portal_Frontend_Phase_Prompts.pdf
+frontend/stitch_nexus_admission_crm/

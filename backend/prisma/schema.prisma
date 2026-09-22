@@ -1,0 +1,482 @@
+// Prisma Schema — Admission Hub (WhiteDavid23 Academy)
+// Multi-Tenant Partner Admissions CRM & Reporting Platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================================
+// ENUMS
+// =====================================================
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum RoleName {
+  SUPER_ADMIN
+  PARTNER_ADMIN
+  COUNSELOR
+  SUPPORT
+}
+
+enum PartnerStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum CommissionType {
+  PERCENTAGE
+  FLAT
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+  HOT
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  FOLLOW_UP
+  DEMO_BOOKED
+  DEMO_COMPLETED
+  FEE_DISCUSSION
+  ADMISSION_PENDING
+  ADMITTED
+  LOST
+}
+
+enum ActivityType {
+  CREATED
+  ASSIGNED
+  STATUS_CHANGED
+  CALL
+  WHATSAPP
+  EMAIL
+  NOTE
+  DEMO_BOOKED
+  BROCHURE_SENT
+  FEE_DISCUSSION
+  ADMISSION_CREATED
+}
+
+enum FollowUpStatus {
+  PENDING
+  COMPLETED
+  OVERDUE
+  SNOOZED
+  CANCELLED
+}
+
+enum FollowUpOutcome {
+  CONNECTED
+  NO_RESPONSE
+  CALL_LATER
+  INTERESTED_LATER
+  DEMO_BOOKED
+  LOST
+  CONVERTED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+  REFUNDED
+  CANCELLED
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum CourseStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum AssetType {
+  POSTER
+  BANNER
+  VIDEO
+  REEL
+  CAPTION
+  WHATSAPP_TEMPLATE
+  BROCHURE
+  TESTIMONIAL
+}
+
+enum AssetStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+// =====================================================
+// DOMAIN MODELS
+// =====================================================
+
+model Partner {
+  id             String         @id @default(uuid())
+  academyName    String         @map("academy_name")
+  partnerName    String         @map("partner_name")
+  ownerName      String         @map("owner_name")
+  email          String         @unique
+  mobile         String
+  address        String?
+  logoUrl        String?        @map("logo_url")
+  commissionType CommissionType @default(PERCENTAGE) @map("commission_type")
+  status         PartnerStatus  @default(PENDING)
+  joiningDate    DateTime       @default(now()) @map("joining_date")
+  approvedAt     DateTime?      @map("approved_at")
+  approvedBy     String?        @map("approved_by")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  users             User[]
+  leads             Lead[]
+  admissions        Admission[]
+  commissionRecords CommissionRecord[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+
+  @@map("partners")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        RoleName @unique
+  description String?
+
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  description String?
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id           String     @id @default(uuid())
+  partnerId    String?    @map("partner_id")
+  roleId       String     @map("role_id")
+  name         String
+  email        String     @unique
+  phone        String?
+  passwordHash String     @map("password_hash")
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?  @map("last_login_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  partner        Partner?       @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+  role           Role           @relation(fields: [roleId], references: [id])
+  assignedLeads  Lead[]         @relation("LeadAssignee")
+  createdLeads   Lead[]         @relation("LeadCreator")
+  leadActivities LeadActivity[]
+  followUps      FollowUp[]     @relation("FollowUpAssignee")
+  admissions     Admission[]    @relation("AdmissionCreator")
+  payments       Payment[]      @relation("PaymentCreator")
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  refreshTokens  RefreshToken[]
+
+  @@index([partnerId])
+  @@map("users")
+}
+
+model Course {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  duration    String
+  fee         Decimal      @db.Decimal(12, 2)
+  syllabusUrl String?      @map("syllabus_url")
+  brochureUrl String?      @map("brochure_url")
+  demoUrl     String?      @map("demo_url")
+  benefits    String?
+  faq         String?
+  status      CourseStatus @default(ACTIVE)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  leads           Lead[]
+  admissions      Admission[]
+  marketingAssets MarketingAsset[]
+  commissionRules CommissionRule[]
+
+  @@map("courses")
+}
+
+model Lead {
+  id           String       @id @default(uuid())
+  partnerId    String       @map("partner_id")
+  assignedTo   String?      @map("assigned_to")
+  createdBy    String?      @map("created_by")
+  courseId     String?      @map("course_id")
+  name         String
+  phone        String
+  whatsapp     String?
+  email        String?
+  city         String?
+  source       String?
+  budget       Decimal?     @db.Decimal(12, 2)
+  priority     LeadPriority @default(MEDIUM)
+  status       LeadStatus   @default(NEW)
+  score        Int          @default(0)
+  followUpDate DateTime?    @map("follow_up_date")
+  notes        String?
+  closedReason String?      @map("closed_reason")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  archivedAt   DateTime?    @map("archived_at")
+
+  partner    Partner        @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  assignee   User?          @relation("LeadAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
+  creator    User?          @relation("LeadCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  course     Course?        @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  activities LeadActivity[]
+  followUps  FollowUp[]
+  admissions Admission[]
+
+  @@index([partnerId])
+  @@index([assignedTo])
+  @@index([status])
+  @@index([phone])
+  @@index([email])
+  @@index([followUpDate])
+  @@map("leads")
+}
+
+model LeadActivity {
+  id          String       @id @default(uuid())
+  leadId      String       @map("lead_id")
+  userId      String?      @map("user_id")
+  type        ActivityType
+  description String
+  metadata    Json?
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  lead Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([leadId])
+  @@map("lead_activities")
+}
+
+model FollowUp {
+  id          String           @id @default(uuid())
+  leadId      String           @map("lead_id")
+  assignedTo  String?          @map("assigned_to")
+  dueAt       DateTime         @map("due_at")
+  priority    LeadPriority     @default(MEDIUM)
+  status      FollowUpStatus   @default(PENDING)
+  outcome     FollowUpOutcome?
+  notes       String?
+  completedAt DateTime?        @map("completed_at")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  lead     Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assignee User? @relation("FollowUpAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
+
+  @@index([leadId])
+  @@index([assignedTo])
+  @@index([dueAt])
+  @@index([status])
+  @@map("follow_ups")
+}
+
+model Admission {
+  id                 String             @id @default(uuid())
+  leadId             String             @map("lead_id")
+  partnerId          String             @map("partner_id")
+  courseId           String             @map("course_id")
+  createdBy          String?            @map("created_by")
+  studentName        String             @map("student_name")
+  fee                Decimal            @db.Decimal(12, 2)
+  paymentStatus      PaymentStatus      @default(UNPAID) @map("payment_status")
+  paymentMode        String?            @map("payment_mode")
+  joiningDate        DateTime           @default(now()) @map("joining_date")
+  remarks            String?
+  verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  lead              Lead               @relation(fields: [leadId], references: [id])
+  partner           Partner            @relation(fields: [partnerId], references: [id])
+  course            Course             @relation(fields: [courseId], references: [id])
+  creator           User?              @relation("AdmissionCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  payments          Payment[]
+  commissionRecords CommissionRecord[]
+
+  @@index([partnerId])
+  @@index([courseId])
+  @@index([paymentStatus])
+  @@map("admissions")
+}
+
+model Payment {
+  id                   String        @id @default(uuid())
+  admissionId          String        @map("admission_id")
+  createdBy            String?       @map("created_by")
+  amount               Decimal       @db.Decimal(12, 2)
+  paymentMode          String        @map("payment_mode")
+  transactionReference String?       @map("transaction_reference")
+  paymentDate          DateTime      @default(now()) @map("payment_date")
+  status               PaymentStatus @default(PAID)
+  createdAt            DateTime      @default(now()) @map("created_at")
+
+  admission Admission @relation(fields: [admissionId], references: [id], onDelete: Cascade)
+  creator   User?     @relation("PaymentCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([admissionId])
+  @@map("payments")
+}
+
+model MarketingAsset {
+  id           String      @id @default(uuid())
+  courseId     String?     @map("course_id")
+  title        String
+  type         AssetType
+  fileUrl      String      @map("file_url")
+  thumbnailUrl String?     @map("thumbnail_url")
+  language     String      @default("English")
+  status       AssetStatus @default(ACTIVE)
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  course Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  @@map("marketing_assets")
+}
+
+model CommissionRule {
+  id             String         @id @default(uuid())
+  courseId       String?        @map("course_id")
+  partnerType    String?        @map("partner_type")
+  commissionType CommissionType @default(PERCENTAGE) @map("commission_type")
+  rate           Decimal        @db.Decimal(10, 2)
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  course Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  @@map("commission_rules")
+}
+
+model CommissionRecord {
+  id               String           @id @default(uuid())
+  partnerId        String           @map("partner_id")
+  admissionId      String           @map("admission_id")
+  ruleId           String?          @map("rule_id")
+  baseAmount       Decimal          @map("base_amount") @db.Decimal(12, 2)
+  commissionRate   Decimal          @map("commission_rate") @db.Decimal(10, 2)
+  commissionAmount Decimal          @map("commission_amount") @db.Decimal(12, 2)
+  status           CommissionStatus @default(PENDING)
+  paidAt           DateTime?        @map("paid_at")
+  createdAt        DateTime         @default(now()) @map("created_at")
+
+  partner   Partner   @relation(fields: [partnerId], references: [id])
+  admission Admission @relation(fields: [admissionId], references: [id])
+
+  @@index([partnerId])
+  @@index([status])
+  @@map("commission_records")
+}
+
+model Notification {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  partnerId     String?   @map("partner_id")
+  type          String
+  title         String
+  message       String
+  referenceType String?   @map("reference_type")
+  referenceId   String?   @map("reference_id")
+  readAt        DateTime? @map("read_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  partner Partner? @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([partnerId])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?  @map("user_id")
+  partnerId  String?  @map("partner_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  oldValue   Json?    @map("old_value")
+  newValue   Json?    @map("new_value")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  partner Partner? @relation(fields: [partnerId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([partnerId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
