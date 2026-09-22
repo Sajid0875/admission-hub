@@ -60,5 +60,8 @@ export const ConflictError = (message = 'Conflict', details?: unknown) =>
 export const UnprocessableError = (message = 'Unprocessable Entity', details?: unknown) =>
     new AppError(message, { statusCode: 422, details });
 
+export const TooManyRequestsError = (message = 'Too Many Requests', details?: unknown) =>
+    new AppError(message, { statusCode: 429, details });
+
 export const InternalError = (message = 'Internal Server Error', details?: unknown) =>
     new AppError(message, { statusCode: 500, isOperational: false, details });

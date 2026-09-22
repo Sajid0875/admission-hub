@@ -30,6 +30,24 @@ const EnvSchema = z.object({
     LOG_LEVEL: z
         .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
         .default('info'),
+
+    // In-process follow-up reminder scanner (no Redis in MVP).
+    FOLLOWUP_REMINDERS_ENABLED: z
+        .enum(['true', 'false'])
+        .default('true')
+        .transform((v) => v === 'true'),
+    FOLLOWUP_REMINDER_INTERVAL_MS: z.coerce
+        .number()
+        .int()
+        .positive()
+        .default(60_000),
+    FOLLOWUP_DUE_SOON_MINUTES: z.coerce.number().int().positive().default(60),
+
+    // WhatsApp stub — when true, stub still only logs (no external send).
+    WHATSAPP_ENABLED: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((v) => v === 'true'),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

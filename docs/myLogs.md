@@ -4,7 +4,7 @@
 
 ## Start Date: 13 September 2026
 
-## End Date: 22–23 September 2026
+## End Date: 23 September 2026
 
 ## System Design Reference: https://strata-void-73605916.figma.site/
 
@@ -22,7 +22,7 @@
 - **Git Branch**: `dev_Sohaim`
 - **Developer Identity**: `s0a1m0x01` (`cx3eno@gmail.com`)
 - **Workspace**: `admission-hub/` (monorepo) — backend lives in `backend/`, frontend in `frontend/`
-- **Status**: **Backend MVP COMPLETE** (235 tests) + **Full Stack Integration COMPLETE** (22–23 Sep 2026; Phase-2 FE: courses, marketing, notifications, commission rules)
+- **Status**: **Backend MVP COMPLETE** (240 tests) + **Full Stack Integration COMPLETE** (22–23 Sep 2026) + **Hardening + Phase-3 reminders** (23 Sep 2026)
 
 ---
 
@@ -615,15 +615,22 @@ npm run prisma:seed
 - [x] Reports CSV export UI wired to `GET /reports/export`
 
 **Still optional / not required for local integration:**
-- OpenAPI / Swagger spec
-- Rate limiting on non-auth routes
 - Refresh tokens
-- Redis-backed background jobs (follow-up reminders, notification fanout)
+- Redis-backed job queue (in-process follow-up reminders ship for MVP; Redis still optional at scale)
 - PDF export (CSV only today)
 - Docker / Kubernetes manifests
-- CI/CD pipeline (GitHub Actions)
 - Dedicated `GET /commissions/summary` (FE currently derives summary from list)
+- Real WhatsApp provider (Meta/Twilio) — stub only today
 - Aikido security scan MCP (not configured in this environment)
+
+**Done after PR #2 merge (23 Sep 2026):**
+- [x] Merge PR #2 to `main` (monorepo backend + frontend)
+- [x] Drop legacy root Next.js tree that leaked in from `main` during conflict resolution
+- [x] GitHub Actions CI (backend typecheck+test with Postgres; frontend typecheck)
+- [x] In-memory rate limiting (`/api/v1` + stricter login)
+- [x] OpenAPI scaffold + Swagger UI at `/api/v1/docs` and `/api/v1/openapi.json`
+- [x] In-process follow-up reminder scanner (`FOLLOWUP_*` env) with idempotent notifications
+- [x] WhatsApp adapter stub (`WHATSAPP_ENABLED`, logs only)
 
 ---
 
@@ -730,7 +737,7 @@ PA `GET /reports/export?report=leads` and `admissions` → 200 `text/csv` with C
 
 | Test type | Where | Status |
 |---|---|---|
-| Unit / service (Vitest) | Backend modules | **235/235 pass** |
+| Unit / service (Vitest) | Backend modules | **240/240 pass** |
 | Integration-style DB fixtures | Backend test DB | Covered inside Vitest suites |
 | Manual curl smoke | Each backend module during build | Passed (logged per phase above) |
 | Frontend smoke script | `frontend/scripts/smoke-tests.ts` | **29/29 pass** |
@@ -764,4 +771,5 @@ PA `GET /reports/export?report=leads` and `admissions` → 200 `text/csv` with C
 ## Full Stack Integration End Date: **23 September 2026**
 
 Core role E2E + backend module suite: **22 Sep 2026**.  
-Phase-2 FE polish (courses, marketing, notifications, commission rules): **22–23 Sep 2026**.
+Phase-2 FE polish (courses, marketing, notifications, commission rules): **22–23 Sep 2026**.  
+PR #2 merged to `main`; hardening (CI, rate limits, OpenAPI) + Phase-3 reminders/WhatsApp stub: **23 Sep 2026**.
