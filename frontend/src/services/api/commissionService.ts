@@ -176,28 +176,41 @@ export const commissionService = {
   },
 
   /**
-   * Summary: backend has no /commissions/summary — derive from list.
+   * Summary KPIs from GET /commissions/summary (falls back to list derive on mock/offline).
    */
   async getCommissionSummary(partnerId?: string): Promise<CommissionSummary> {
-    try {
+    if (areMocksEnabled()) {
       const list = await this.getCommissions({ page: 1, limit: 100, partnerId });
       return summarizeCommissions(list.data);
+    }
+
+    try {
+      const params = new URLSearchParams();
+      if (partnerId) params.set("partnerId", partnerId);
+      const qs = params.toString();
+      const res = await apiClient.getRawInstance().get<{
+        summary: CommissionSummary & {
+          counts?: {
+            pending: number;
+            approved: number;
+            paid: number;
+            cancelled: number;
+          };
+        };
+      }>(`/commissions/summary${qs ? `?${qs}` : ""}`);
+
+      const s = res.data.summary;
+      return {
+        totalEarned: Number(s.totalEarned ?? 0),
+        pendingPayout: Number(s.pendingPayout ?? 0),
+        totalPaid: Number(s.totalPaid ?? 0),
+        lastPayoutDate: s.lastPayoutDate ?? undefined,
+      };
     } catch (err: unknown) {
       if (!shouldUseMockFallback(err)) throw err;
-      if (partnerId) {
-        return {
-          totalEarned: 15000,
-          pendingPayout: 9500,
-          totalPaid: 5500,
-          lastPayoutDate: "2026-08-30T10:00:00Z",
-        };
-      }
-      return {
-        totalEarned: 114500,
-        pendingPayout: 18600,
-        totalPaid: 95900,
-        lastPayoutDate: "2026-08-30T10:00:00Z",
-      };
+      // Offline fallback: derive from list (or seed mocks).
+      const list = await this.getCommissions({ page: 1, limit: 100, partnerId });
+      return summarizeCommissions(list.data);
     }
   },
 

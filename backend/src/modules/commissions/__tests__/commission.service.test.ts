@@ -347,3 +347,69 @@ describe('commissionService.changeCommissionStatus', () => {
         ).rejects.toMatchObject({ statusCode: 403 });
     });
 });
+// --------------------------------------------------
+// getCommissionSummary
+// --------------------------------------------------
+
+describe('commissionService.getCommissionSummary', () => {
+    it('aggregates pending amount for partner scope', async () => {
+        // Happy path: one PENDING row → pendingPayout equals commissionAmount.
+        const f = await seedFx();
+
+        const summary = await commissionService.getCommissionSummary(
+            asPartnerAdmin(f.partnerAdminId, f.partnerId),
+        );
+
+        expect(summary.totalEarned).toBe(10000);
+        expect(summary.pendingPayout).toBe(10000);
+        expect(summary.totalPaid).toBe(0);
+        expect(summary.lastPayoutDate).toBeNull();
+        expect(summary.counts.pending).toBe(1);
+        expect(summary.counts.paid).toBe(0);
+    });
+
+    it('moves amount into totalPaid after APPROVED → PAID', async () => {
+        const f = await seedFx();
+
+        await commissionService.changeCommissionStatus(
+            asSuperAdmin(f.superAdminId),
+            f.commissionId,
+            { status: CommissionStatus.APPROVED },
+        );
+        await commissionService.changeCommissionStatus(
+            asSuperAdmin(f.superAdminId),
+            f.commissionId,
+            { status: CommissionStatus.PAID },
+        );
+
+        const summary = await commissionService.getCommissionSummary(
+            asSuperAdmin(f.superAdminId),
+        );
+
+        expect(summary.pendingPayout).toBe(0);
+        expect(summary.totalPaid).toBe(10000);
+        expect(summary.lastPayoutDate).toBeTruthy();
+        expect(summary.counts.paid).toBe(1);
+    });
+
+    it('partner_admin cannot filter by another partnerId', async () => {
+        const f = await seedFx();
+
+        await expect(
+            commissionService.getCommissionSummary(
+                asPartnerAdmin(f.partnerAdminId, f.partnerId),
+                { partnerId: f.otherPartnerId },
+            ),
+        ).rejects.toMatchObject({ statusCode: 403 });
+    });
+
+    it('counselor cannot view summary', async () => {
+        const f = await seedFx();
+
+        await expect(
+            commissionService.getCommissionSummary(
+                asCounselor(f.partnerAdminId, f.partnerId),
+            ),
+        ).rejects.toMatchObject({ statusCode: 403 });
+    });
+});

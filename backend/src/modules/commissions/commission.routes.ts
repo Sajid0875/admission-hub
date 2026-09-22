@@ -5,11 +5,13 @@
  *
  * Routes:
  *   GET    /                      list records (super_admin, partner_admin)
+ *   GET    /summary               KPI summary (super_admin, partner_admin)
  *   GET    /:id                   get one record (super_admin, partner_admin)
  *   PATCH  /:id/status            change status (super_admin only)
  *
  * Every route is behind `protect`.
  * Scope enforcement (partner_admin → own org) is in the service.
+ * Literal `/summary` MUST be registered before `/:id`.
  */
 
 import { Router } from 'express';
@@ -17,6 +19,7 @@ import { protect, authorize } from '../../middleware/auth.middleware.js';
 import { asyncHandler } from '../../middleware/error.middleware.js';
 import {
     listCommissionsHandler,
+    getCommissionSummaryHandler,
     getCommissionHandler,
     changeCommissionStatusHandler,
 } from './commission.controller.js';
@@ -31,6 +34,12 @@ commissionRouter.get(
     '/',
     authorize('SUPER_ADMIN', 'PARTNER_ADMIN'),
     asyncHandler(listCommissionsHandler),
+);
+
+commissionRouter.get(
+    '/summary',
+    authorize('SUPER_ADMIN', 'PARTNER_ADMIN'),
+    asyncHandler(getCommissionSummaryHandler),
 );
 
 commissionRouter.get(

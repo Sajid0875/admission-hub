@@ -3,6 +3,7 @@
  *
  * Responsibilities:
  *   - List / get commission records (super_admin + partner_admin)
+ *   - Summary KPIs (GET /commissions/summary)
  *   - Change status: PENDING → APPROVED → PAID; PENDING → CANCELLED
  *   - Stamp paidAt when status becomes PAID
  *   - Tenant scoping: partner_admin sees only own org
@@ -26,6 +27,7 @@ import { NotificationType, notify } from '../../shared/utils/notify.js';
 import { CommissionStatus } from '@prisma/client';
 import type {
     ChangeCommissionStatusInput,
+    CommissionSummaryQuery,
     ListCommissionsQuery,
 } from './commission.schema.js';
 
@@ -293,4 +295,93 @@ export const changeCommissionStatus = async (
     }
 
     return toSafeRecord(updated);
+};
+// --------------------------------------------------
+// Summary KPIs
+// --------------------------------------------------
+
+export interface CommissionSummary {
+    totalEarned: number;
+    pendingPayout: number;
+    totalPaid: number;
+    lastPayoutDate: string | null;
+    counts: {
+        pending: number;
+        approved: number;
+        paid: number;
+        cancelled: number;
+    };
+}
+
+/**
+ * Aggregates commission amounts for the actor's scope.
+ * Matches FE KPI semantics: pendingPayout = PENDING + APPROVED amounts.
+ */
+export const getCommissionSummary = async (
+    actor: ScopeUser,
+    query: CommissionSummaryQuery = {},
+): Promise<CommissionSummary> => {
+    if (actor.role !== 'SUPER_ADMIN') {
+        if (actor.role !== 'PARTNER_ADMIN') {
+            throw ForbiddenError('Only SUPER_ADMIN and PARTNER_ADMIN can view commissions');
+        }
+        if (!actor.partnerId) {
+            throw ForbiddenError('User is not associated with any partner');
+        }
+    }
+
+    const where: { partnerId?: string } = {};
+
+    if (actor.role === 'PARTNER_ADMIN' && actor.partnerId) {
+        where.partnerId = actor.partnerId;
+    }
+
+    if (query.partnerId) {
+        if (actor.role !== 'SUPER_ADMIN') {
+            throw ForbiddenError('Only SUPER_ADMIN can filter by partnerId');
+        }
+        where.partnerId = query.partnerId;
+    }
+
+    const [grouped, lastPaid] = await Promise.all([
+        prisma.commissionRecord.groupBy({
+            by: ['status'],
+            where,
+            _sum: { commissionAmount: true },
+            _count: { _all: true },
+        }),
+        prisma.commissionRecord.findFirst({
+            where: { ...where, status: CommissionStatus.PAID, paidAt: { not: null } },
+            orderBy: { paidAt: 'desc' },
+            select: { paidAt: true },
+        }),
+    ]);
+
+    const amountOf = (status: CommissionStatus): number => {
+        const row = grouped.find((g) => g.status === status);
+        return Number(row?._sum.commissionAmount ?? 0);
+    };
+
+    const countOf = (status: CommissionStatus): number => {
+        const row = grouped.find((g) => g.status === status);
+        return row?._count._all ?? 0;
+    };
+
+    const pendingAmt = amountOf(CommissionStatus.PENDING);
+    const approvedAmt = amountOf(CommissionStatus.APPROVED);
+    const paidAmt = amountOf(CommissionStatus.PAID);
+    const cancelledAmt = amountOf(CommissionStatus.CANCELLED);
+
+    return {
+        totalEarned: pendingAmt + approvedAmt + paidAmt + cancelledAmt,
+        pendingPayout: pendingAmt + approvedAmt,
+        totalPaid: paidAmt,
+        lastPayoutDate: lastPaid?.paidAt ? lastPaid.paidAt.toISOString() : null,
+        counts: {
+            pending: countOf(CommissionStatus.PENDING),
+            approved: countOf(CommissionStatus.APPROVED),
+            paid: countOf(CommissionStatus.PAID),
+            cancelled: countOf(CommissionStatus.CANCELLED),
+        },
+    };
 };

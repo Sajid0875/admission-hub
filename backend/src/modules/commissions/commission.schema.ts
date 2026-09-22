@@ -61,3 +61,12 @@ export const ListCommissionsQuerySchema = z.object({
 });
 
 export type ListCommissionsQuery = z.infer<typeof ListCommissionsQuerySchema>;
+// --------------------------------------------------
+// Summary KPIs
+// --------------------------------------------------
+
+export const CommissionSummaryQuerySchema = z.object({
+    partnerId: z.string().uuid().optional(),
+});
+
+export type CommissionSummaryQuery = z.infer<typeof CommissionSummaryQuerySchema>;
