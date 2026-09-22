@@ -4,6 +4,7 @@
 
 export type PaymentStatus = "pending" | "partial" | "full" | "refunded" | "cancelled";
 export type PaymentMode = "cash" | "upi" | "bank_transfer" | "card" | "cheque" | "online";
+export type VerificationStatus = "pending" | "verified" | "rejected";
 
 export interface AdmissionDocument {
   id: string;
@@ -24,6 +25,7 @@ export interface Admission {
   amountPaid: number;
   paymentMode: PaymentMode;
   paymentStatus: PaymentStatus;
+  verificationStatus?: VerificationStatus;
   joiningDate: string;
   partnerId?: string;
   commissionAmount?: number;

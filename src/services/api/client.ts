@@ -1,7 +1,7 @@
 import axios, { type AxiosError, type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from "axios";
 import type { ApiErrorResponse, ApiSuccessResponse, NormalizedError, PaginatedResponse } from "@/types/api";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
 
 /**
  * Normalized Error Type Guard
@@ -182,19 +182,54 @@ export const apiClient = {
 
   async getPaginated<T>(url: string, config?: AxiosRequestConfig): Promise<PaginatedResponse<T>> {
     try {
-      const res = await axiosInstance.get<PaginatedResponse<T>>(url, config);
-      if (res.data && typeof res.data === "object" && "meta" in res.data) {
-        return res.data;
+      const res = await axiosInstance.get(url, config);
+      const body = res.data as {
+        success?: boolean;
+        data?: T[];
+        meta?: PaginatedResponse<T>["meta"];
+        pagination?: {
+          page: number;
+          limit: number;
+          total: number;
+          totalPages?: number;
+        };
+      };
+
+      // Backend list shape: { data, pagination }
+      if (body && typeof body === "object" && Array.isArray(body.data) && body.pagination) {
+        const { page, limit, total, totalPages: tp } = body.pagination;
+        const totalPages = tp ?? (Math.ceil(total / (limit || 1)) || 1);
+        return {
+          success: true,
+          data: body.data,
+          meta: {
+            page,
+            limit,
+            total,
+            totalPages,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1,
+          },
+        };
       }
-      // Fallback if data array is returned directly
-      const rawData = (res.data as unknown as { data?: T[] })?.data || (Array.isArray(res.data) ? res.data : []);
+
+      // Frontend / documented shape: { success, data, meta }
+      if (body && typeof body === "object" && "meta" in body && Array.isArray(body.data)) {
+        return body as PaginatedResponse<T>;
+      }
+
+      const rawData = Array.isArray(body?.data)
+        ? body.data
+        : Array.isArray(res.data)
+          ? (res.data as T[])
+          : [];
       return {
         success: true,
-        data: rawData as T[],
+        data: rawData,
         meta: {
           page: 1,
-          limit: (rawData as T[]).length || 20,
-          total: (rawData as T[]).length || 0,
+          limit: rawData.length || 20,
+          total: rawData.length || 0,
         },
       };
     } catch (err) {

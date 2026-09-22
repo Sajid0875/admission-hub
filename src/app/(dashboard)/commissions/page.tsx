@@ -54,25 +54,25 @@ export default function CommissionsPage() {
   const [recordToApprove, setRecordToApprove] = useState<CommissionRecord | null>(null);
   const [forbiddenError, setForbiddenError] = useState<string | null>(null);
 
-  // Partner filter: if not Super Admin, lock to own partnerId
-  const partnerId = isSuperAdmin ? undefined : currentUser?.partnerId || undefined;
+  // Partner filter: only SUPER_ADMIN may send partnerId; PA is tenant-scoped server-side.
+  const partnerIdFilter = isSuperAdmin ? undefined : undefined;
 
   // Fetch summary directly from backend (never calculated client-side)
   const { data: summary } = useQuery({
-    queryKey: ["commission-summary", partnerId],
-    queryFn: () => commissionService.getCommissionSummary(partnerId),
+    queryKey: ["commission-summary", currentUser?.role, currentUser?.partnerId],
+    queryFn: () => commissionService.getCommissionSummary(partnerIdFilter),
   });
 
   // Fetch commission records
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: ["commissions", page, limit, payoutStatus, search, partnerId],
+    queryKey: ["commissions", page, limit, payoutStatus, search, currentUser?.role],
     queryFn: () =>
       commissionService.getCommissions({
         page,
         limit,
         payoutStatus,
         search,
-        partnerId,
+        partnerId: partnerIdFilter,
       }),
   });
 
@@ -191,7 +191,7 @@ export default function CommissionsPage() {
               Total Earned
             </span>
             <span className="text-2xl font-bold text-slate-900 mt-1 block">
-              ${summary?.totalEarned ? summary.totalEarned.toLocaleString() : "—"}
+              ${summary ? summary.totalEarned.toLocaleString() : "—"}
             </span>
             <span className="text-[11px] text-slate-500 mt-0.5 block">From verified admissions</span>
           </div>
@@ -206,7 +206,7 @@ export default function CommissionsPage() {
               Pending Payout
             </span>
             <span className="text-2xl font-bold text-amber-900 mt-1 block">
-              ${summary?.pendingPayout ? summary.pendingPayout.toLocaleString() : "—"}
+              ${summary ? summary.pendingPayout.toLocaleString() : "—"}
             </span>
             <span className="text-[11px] text-amber-700 mt-0.5 block">
               {isSuperAdmin ? "Requires Super Admin clearance" : "Under review"}
@@ -223,7 +223,7 @@ export default function CommissionsPage() {
               Total Paid Out
             </span>
             <span className="text-2xl font-bold text-emerald-700 mt-1 block">
-              ${summary?.totalPaid ? summary.totalPaid.toLocaleString() : "—"}
+              ${summary ? summary.totalPaid.toLocaleString() : "—"}
             </span>
             <span className="text-[11px] text-slate-500 mt-0.5 block">Disbursed to bank account</span>
           </div>

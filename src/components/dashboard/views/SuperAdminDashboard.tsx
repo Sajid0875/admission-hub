@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Globe, Building2, RefreshCw, ArrowRight, ShieldCheck, DollarSign } from "lucide-react";
+import { Globe, Building2, RefreshCw, ArrowRight } from "lucide-react";
 import type { DashboardSummaryData } from "@/services/api/dashboardService";
 import { KpiCard } from "../KpiCard";
 import { PipelineSummary } from "../PipelineSummary";
@@ -21,6 +21,12 @@ export function SuperAdminDashboard({
   onRefresh,
   isRefetching = false,
 }: SuperAdminDashboardProps) {
+  // Prefer live KPI; never hardcode marketing fixture counts on the SA banner.
+  const activePartnersKpi = data.kpis.find((k) => k.id === "active_partners");
+  const activePartnersLabel = activePartnersKpi
+    ? `${activePartnersKpi.value} Active Partners`
+    : null;
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Super Admin Global Banner */}
@@ -31,7 +37,9 @@ export function SuperAdminDashboard({
               <Globe className="w-3 h-3" />
               <span>Global Multi-Tenant Platform</span>
             </span>
-            <span className="text-xs text-on-surface-variant font-medium">14 Active Partners</span>
+            {activePartnersLabel && (
+              <span className="text-xs text-on-surface-variant font-medium">{activePartnersLabel}</span>
+            )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-on-surface tracking-tight">
             Super Admin Platform Overview
@@ -105,49 +113,29 @@ export function SuperAdminDashboard({
             />
           )}
 
-          {/* Quick Partner Summary Card */}
+          {/* Partner directory shortcut — live partner rows live on /partners */}
           <div className="bg-white rounded-3xl p-6 border border-outline-variant shadow-card space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-primary" />
-                <h3 className="text-base font-bold text-on-surface">Top Partner Volume</h3>
+                <h3 className="text-base font-bold text-on-surface">Partner Directory</h3>
               </div>
               <Link href="/partners" className="text-xs font-semibold text-primary hover:underline">
                 View All Partners
               </Link>
             </div>
-
-            <div className="space-y-2 text-xs">
-              <div className="p-3 bg-surface-container-low rounded-xl flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-on-surface block">Apex Academy (partner_001)</span>
-                  <span className="text-[10px] text-slate-500">1,248 Leads • 120 Admissions</span>
-                </div>
-                <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-                  Active
-                </span>
-              </div>
-
-              <div className="p-3 bg-surface-container-low rounded-xl flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-on-surface block">Nexus EdTech (partner_002)</span>
-                  <span className="text-[10px] text-slate-500">920 Leads • 88 Admissions</span>
-                </div>
-                <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-                  Active
-                </span>
-              </div>
-
-              <div className="p-3 bg-surface-container-low rounded-xl flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-on-surface block">Beacon Learning (partner_003)</span>
-                  <span className="text-[10px] text-slate-500">410 Leads • 32 Admissions</span>
-                </div>
-                <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 font-bold text-[10px]">
-                  Pending Review
-                </span>
-              </div>
-            </div>
+            <p className="text-xs text-on-surface-variant">
+              {activePartnersLabel
+                ? `${activePartnersLabel} on the platform. Open the directory to approve, suspend, or review commission terms.`
+                : "Open the partner directory to manage tenant onboarding and commission agreements."}
+            </p>
+            <Link
+              href="/partners"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+            >
+              <span>Open Partner Directory</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </div>
       </div>

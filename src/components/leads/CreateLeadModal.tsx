@@ -134,15 +134,23 @@ export function CreateLeadModal({ isOpen, onClose }: CreateLeadModalProps) {
           return;
         }
 
-        // 400 Bad Request: Map field validation errors
-        if (err.statusCode === 400 && err.details) {
+        // 400/422: field validation (backend Zod fieldErrors or array details)
+        if (err.statusCode === 400 || err.statusCode === 422) {
           const mapped: Record<string, string> = {};
-          if (Array.isArray(err.details)) {
-            err.details.forEach((d) => {
-              if (d.field) mapped[d.field] = d.message;
+          const details = err.details as
+            | Array<{ field?: string; message?: string }>
+            | { fieldErrors?: Record<string, string[]> }
+            | undefined;
+          if (Array.isArray(details)) {
+            details.forEach((d) => {
+              if (d.field && d.message) mapped[d.field] = d.message;
+            });
+          } else if (details?.fieldErrors) {
+            Object.entries(details.fieldErrors).forEach(([field, messages]) => {
+              if (messages?.[0]) mapped[field] = messages[0];
             });
           }
-          setFieldErrors(mapped);
+          if (Object.keys(mapped).length > 0) setFieldErrors(mapped);
           setGeneralError(err.message || "Validation failed for one or more fields.");
           return;
         }

@@ -1,11 +1,16 @@
 import { apiClient } from "./client";
 import type { PaginatedResponse, NormalizedError } from "@/types/api";
-import type { Admission, PaymentStatus, PaymentMode } from "@/types/admission";
+import type { Admission, PaymentStatus, PaymentMode, VerificationStatus } from "@/types/admission";
+import { areMocksEnabled, isMockableOfflineError } from "@/lib/mocks";
+import { normalizePaginatedResponse } from "@/lib/mappers";
+import { courseService } from "./courseService";
 
-/**
- * Seed Admissions Data
- * Converted leads that generated admissions records.
- */
+export interface CourseOption {
+  id: string;
+  title: string;
+  fee: number;
+}
+
 const SEED_ADMISSIONS: Admission[] = [
   {
     id: "adm_001",
@@ -18,10 +23,10 @@ const SEED_ADMISSIONS: Admission[] = [
     amountPaid: 55000,
     paymentMode: "bank_transfer",
     paymentStatus: "full",
+    verificationStatus: "verified",
     joiningDate: "2026-09-01",
     partnerId: "partner_001",
     commissionAmount: 5500,
-    remarks: "Full tuition paid via direct NEFT. Batch FSD-2026-Q3.",
     createdAt: new Date(Date.now() - 3600000 * 72).toISOString(),
   },
   {
@@ -35,45 +40,11 @@ const SEED_ADMISSIONS: Admission[] = [
     amountPaid: 35000,
     paymentMode: "upi",
     paymentStatus: "partial",
+    verificationStatus: "pending",
     joiningDate: "2026-09-15",
     partnerId: "partner_001",
     commissionAmount: 3500,
-    remarks: "First installment received. Second installment scheduled for Oct 15.",
     createdAt: new Date(Date.now() - 3600000 * 48).toISOString(),
-  },
-  {
-    id: "adm_003",
-    leadId: "lead_012",
-    studentName: "Danish Irfan",
-    studentId: "STU-2026-083",
-    courseId: "course_cloud",
-    courseName: "Cloud Architecture & DevOps",
-    fee: 45000,
-    amountPaid: 45000,
-    paymentMode: "card",
-    paymentStatus: "full",
-    joiningDate: "2026-09-10",
-    partnerId: "partner_001",
-    commissionAmount: 4500,
-    remarks: "Early bird discount applied. Verified enrollment.",
-    createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-  },
-  {
-    id: "adm_004",
-    leadId: "lead_015",
-    studentName: "Areeba Noor",
-    studentId: "STU-2026-084",
-    courseId: "course_ui",
-    courseName: "UI/UX & Product Design",
-    fee: 40000,
-    amountPaid: 15000,
-    paymentMode: "online",
-    paymentStatus: "partial",
-    joiningDate: "2026-09-20",
-    partnerId: "partner_001",
-    commissionAmount: 1500,
-    remarks: "Seat confirmation deposit cleared.",
-    createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
   },
 ];
 
@@ -87,11 +58,70 @@ export interface AdmissionQueryParams {
   courseId?: string;
 }
 
-/**
- * Admissions API Service
- * TODO-CONTRACT: Endpoints pending backend provisioning.
- */
+function shouldUseMockFallback(err: unknown): boolean {
+  if (!areMocksEnabled()) return false;
+  return isMockableOfflineError(err as NormalizedError);
+}
+
+function mapBackendAdmission(raw: unknown): Admission {
+  const a = raw as {
+    id: string;
+    leadId?: string | null;
+    studentName?: string;
+    name?: string;
+    courseId?: string | null;
+    totalFee?: number;
+    fee?: number;
+    amountPaid?: number;
+    paymentStatus?: string;
+    paymentMode?: string;
+    verificationStatus?: string;
+    joiningDate?: string | Date | null;
+    partnerId?: string;
+    createdAt?: string | Date;
+  };
+  const payMap: Record<string, PaymentStatus> = {
+    UNPAID: "pending",
+    PARTIAL: "partial",
+    FULL: "full",
+    PAID: "full",
+    PENDING: "pending",
+    REFUNDED: "refunded",
+    CANCELLED: "cancelled",
+  };
+  const verifyMap: Record<string, VerificationStatus> = {
+    PENDING: "pending",
+    VERIFIED: "verified",
+    REJECTED: "rejected",
+  };
+  return {
+    id: a.id,
+    leadId: a.leadId ?? undefined,
+    studentName: a.studentName ?? a.name ?? "Student",
+    courseId: a.courseId ?? "",
+    fee: Number(a.totalFee ?? a.fee ?? 0),
+    amountPaid: Number(a.amountPaid ?? 0),
+    paymentMode: (a.paymentMode?.toLowerCase() as PaymentMode) || "online",
+    paymentStatus: payMap[a.paymentStatus ?? ""] ?? "pending",
+    verificationStatus: verifyMap[a.verificationStatus ?? ""] ?? "pending",
+    joiningDate: a.joiningDate
+      ? new Date(a.joiningDate).toISOString()
+      : new Date().toISOString(),
+    partnerId: a.partnerId,
+    createdAt: a.createdAt ? new Date(a.createdAt).toISOString() : undefined,
+  };
+}
+
 export const admissionService = {
+  async listCourses(): Promise<CourseOption[]> {
+    const page = await courseService.getCourses({ page: 1, limit: 50 });
+    return page.data.map((c) => ({
+      id: c.id,
+      title: c.title,
+      fee: c.fee,
+    }));
+  },
+
   async getAdmissions(params: AdmissionQueryParams = {}): Promise<PaginatedResponse<Admission>> {
     const { page = 1, limit = 10, search = "", paymentStatus = "all" } = params;
 
@@ -99,87 +129,121 @@ export const admissionService = {
     queryParams.set("page", String(page));
     queryParams.set("limit", String(limit));
     if (search.trim()) queryParams.set("search", search.trim());
-    if (paymentStatus && paymentStatus !== "all") queryParams.set("paymentStatus", paymentStatus);
+    if (paymentStatus && paymentStatus !== "all") {
+      queryParams.set("paymentStatus", paymentStatus.toUpperCase());
+    }
 
     try {
-      return await apiClient.getPaginated<Admission>(`/admissions?${queryParams.toString()}`);
+      const raw = await apiClient.getRawInstance().get(`/admissions?${queryParams.toString()}`);
+      return normalizePaginatedResponse(raw.data, mapBackendAdmission);
     } catch (err: unknown) {
-      const normErr = err as NormalizedError;
-      if (normErr.code === "NETWORK_ERROR" || normErr.statusCode === 404) {
-        let filtered = [...localAdmissionsStore];
+      if (!shouldUseMockFallback(err)) throw err;
 
-        if (paymentStatus && paymentStatus !== "all") {
-          filtered = filtered.filter((a) => a.paymentStatus === paymentStatus);
-        }
-
-        if (search.trim()) {
-          const q = search.toLowerCase().trim();
-          filtered = filtered.filter(
-            (a) =>
-              a.studentName.toLowerCase().includes(q) ||
-              (a.studentId && a.studentId.toLowerCase().includes(q)) ||
-              (a.courseName && a.courseName.toLowerCase().includes(q))
-          );
-        }
-
-        const total = filtered.length;
-        const totalPages = Math.ceil(total / limit) || 1;
-        const offset = (page - 1) * limit;
-
-        return {
-          success: true,
-          data: filtered.slice(offset, offset + limit),
-          meta: {
-            page,
-            limit,
-            total,
-            totalPages,
-            hasNextPage: page < totalPages,
-            hasPrevPage: page > 1,
-          },
-        };
+      let filtered = [...localAdmissionsStore];
+      if (paymentStatus && paymentStatus !== "all") {
+        filtered = filtered.filter((a) => a.paymentStatus === paymentStatus);
       }
-      throw err;
+      if (search.trim()) {
+        const q = search.toLowerCase().trim();
+        filtered = filtered.filter(
+          (a) =>
+            a.studentName.toLowerCase().includes(q) ||
+            (a.studentId && a.studentId.toLowerCase().includes(q)) ||
+            (a.courseName && a.courseName.toLowerCase().includes(q))
+        );
+      }
+
+      const total = filtered.length;
+      const totalPages = Math.ceil(total / limit) || 1;
+      const offset = (page - 1) * limit;
+
+      return {
+        success: true,
+        data: filtered.slice(offset, offset + limit),
+        meta: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
     }
   },
 
   async getAdmissionById(id: string): Promise<Admission> {
     try {
-      return await apiClient.get<Admission>(`/admissions/${id}`);
+      const res = await apiClient.getRawInstance().get<{ admission: unknown }>(`/admissions/${id}`);
+      return mapBackendAdmission(res.data.admission ?? res.data);
     } catch (err: unknown) {
-      const normErr = err as NormalizedError;
-      if (normErr.code === "NETWORK_ERROR" || normErr.statusCode === 404) {
-        const found = localAdmissionsStore.find((a) => a.id === id);
-        if (found) return found;
-      }
+      if (!shouldUseMockFallback(err)) throw err;
+      const found = localAdmissionsStore.find((a) => a.id === id);
+      if (found) return found;
       throw err;
     }
   },
 
   async createAdmission(payload: Partial<Admission>): Promise<Admission> {
     try {
-      return await apiClient.post<Admission>("/admissions", payload);
+      const paymentMode = payload.paymentMode
+        ? payload.paymentMode.toUpperCase().replace("-", "_")
+        : undefined;
+      const res = await apiClient.getRawInstance().post<{ admission: unknown }>("/admissions", {
+        leadId: payload.leadId,
+        courseId: payload.courseId,
+        // Backend CreateAdmissionSchema expects `fee` (not totalFee).
+        fee: payload.fee,
+        studentName: payload.studentName,
+        paymentMode,
+        joiningDate: payload.joiningDate
+          ? new Date(payload.joiningDate).toISOString()
+          : undefined,
+        remarks: payload.remarks ?? null,
+      });
+      return mapBackendAdmission(res.data.admission ?? res.data);
     } catch (err: unknown) {
-      const normErr = err as NormalizedError;
-      if (normErr.code === "NETWORK_ERROR" || normErr.statusCode === 404) {
-        const newAdmission: Admission = {
-          id: `adm_${Date.now()}`,
-          studentName: payload.studentName || "New Student",
-          courseId: payload.courseId || "course_ds",
-          courseName: payload.courseName || "Data Science",
-          fee: payload.fee || 50000,
-          amountPaid: payload.amountPaid || 50000,
-          paymentMode: payload.paymentMode || "online",
-          paymentStatus: payload.paymentStatus || "full",
-          joiningDate: payload.joiningDate || new Date().toISOString(),
-          partnerId: "partner_001",
-          ...payload,
-          createdAt: new Date().toISOString(),
-        };
-        localAdmissionsStore = [newAdmission, ...localAdmissionsStore];
-        return newAdmission;
-      }
-      throw err;
+      if (!shouldUseMockFallback(err)) throw err;
+      const newAdmission: Admission = {
+        id: `adm_${Date.now()}`,
+        studentName: payload.studentName || "New Student",
+        courseId: payload.courseId || "course_ds",
+        courseName: payload.courseName || "Data Science",
+        fee: payload.fee || 50000,
+        amountPaid: payload.amountPaid || 0,
+        paymentMode: payload.paymentMode || "online",
+        paymentStatus: payload.paymentStatus || "pending",
+        verificationStatus: "pending",
+        joiningDate: payload.joiningDate || new Date().toISOString(),
+        partnerId: "partner_001",
+        ...payload,
+        createdAt: new Date().toISOString(),
+      };
+      localAdmissionsStore = [newAdmission, ...localAdmissionsStore];
+      return newAdmission;
+    }
+  },
+
+  async verifyAdmission(
+    admissionId: string,
+    verificationStatus: "VERIFIED" | "REJECTED" = "VERIFIED",
+    remarks?: string
+  ): Promise<Admission> {
+    try {
+      const res = await apiClient.getRawInstance().post<{ admission: unknown }>(
+        `/admissions/${admissionId}/verify`,
+        { verificationStatus, remarks: remarks ?? null }
+      );
+      return mapBackendAdmission(res.data.admission ?? res.data);
+    } catch (err: unknown) {
+      if (!shouldUseMockFallback(err)) throw err;
+      const idx = localAdmissionsStore.findIndex((a) => a.id === admissionId);
+      if (idx === -1) throw err;
+      localAdmissionsStore[idx] = {
+        ...localAdmissionsStore[idx],
+        verificationStatus: verificationStatus === "VERIFIED" ? "verified" : "rejected",
+      };
+      return localAdmissionsStore[idx];
     }
   },
 };

@@ -1,18 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Calendar,
   Clock,
   CheckCircle2,
-  AlertCircle,
-  ExternalLink,
-  Search,
-  Filter,
   RefreshCw,
   Phone,
+  ExternalLink,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import {
@@ -32,44 +29,69 @@ export default function FollowUpsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("pending");
 
-  // Fetch leads to assemble the cross-lead follow-up schedule
+  // Live agenda from GET /followups (not derived from lead.followUpDate)
   const { data, isLoading, refetch, isFetching } = useQuery({
-    queryKey: ["leads", 1, 50],
-    queryFn: () => leadService.getLeads({ page: 1, limit: 50 }),
+    queryKey: ["followups", statusFilter],
+    queryFn: () =>
+      leadService.listFollowups({
+        page: 1,
+        limit: 50,
+        status: statusFilter,
+      }),
   });
 
-  const leads = data?.data || [];
+  // Lead directory for student name / phone enrichment
+  const { data: leadsPage } = useQuery({
+    queryKey: ["leads", "followup-enrich", 1, 100],
+    queryFn: () => leadService.getLeads({ page: 1, limit: 100 }),
+  });
 
-  // Filter leads with followUpDate or active follow-up notes
-  const followUpQueue = leads
-    .filter((l) => l.followUpDate || l.status === "follow_up")
-    .map((l) => ({
-      id: `fu_${l.id}`,
-      leadId: l._id || l.id,
-      studentName: l.studentName,
-      phone: l.phone,
-      course: l.courseInterest || "General Inquiry",
-      priority: l.priority,
-      status: l.status === "admitted" ? "completed" : "pending",
-      dueDate: l.followUpDate || new Date().toISOString(),
-      notes: l.notes || "Follow up on scholarship pricing inquiry and enrollment.",
-    }));
+  const leadById = useMemo(() => {
+    const map = new Map<string, { studentName: string; phone: string; course?: string }>();
+    for (const lead of leadsPage?.data || []) {
+      map.set(lead.id, {
+        studentName: lead.studentName,
+        phone: lead.phone,
+        course: lead.courseInterest,
+      });
+      if (lead._id) {
+        map.set(lead._id, {
+          studentName: lead.studentName,
+          phone: lead.phone,
+          course: lead.courseInterest,
+        });
+      }
+    }
+    return map;
+  }, [leadsPage?.data]);
 
-  const filtered = followUpQueue.filter((item) => {
-    const matchesSearch =
-      item.studentName.toLowerCase().includes(search.toLowerCase()) ||
+  const rows = (data?.data || []).map((task) => {
+    const lead = leadById.get(task.leadId);
+    return {
+      id: task.id,
+      leadId: task.leadId,
+      studentName: lead?.studentName || `Lead ${task.leadId.slice(0, 8)}`,
+      phone: lead?.phone || "—",
+      course: lead?.course || "General Inquiry",
+      priority: task.priority,
+      status: task.status,
+      dueDate: task.dueDate,
+      notes: task.notes || "—",
+    };
+  });
+
+  const filtered = rows.filter((item) => {
+    const q = search.toLowerCase();
+    return (
+      item.studentName.toLowerCase().includes(q) ||
       item.phone.includes(search) ||
-      item.course.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "pending" && item.status === "pending") ||
-      (statusFilter === "completed" && item.status === "completed");
-    return matchesSearch && matchesStatus;
+      item.course.toLowerCase().includes(q) ||
+      item.notes.toLowerCase().includes(q)
+    );
   });
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -96,7 +118,6 @@ export default function FollowUpsPage() {
         </Button>
       </div>
 
-      {/* Filter Bar */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -120,7 +141,6 @@ export default function FollowUpsPage() {
         </select>
       </div>
 
-      {/* Table */}
       <Table>
         <TableHeader>
           <TableRow>

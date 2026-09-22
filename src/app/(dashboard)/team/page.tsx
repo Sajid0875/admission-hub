@@ -50,11 +50,12 @@ export default function TeamPage() {
   const [invitePhone, setInvitePhone] = useState("");
   const [inviteRole, setInviteRole] = useState<UserRole>("counselor");
 
-  const partnerId = isSuperAdmin ? undefined : currentUser?.partnerId || undefined;
+  const partnerId = isSuperAdmin ? currentUser?.partnerId || undefined : undefined;
 
   const { data: team = [], isLoading, refetch, isFetching } = useQuery({
-    queryKey: ["team", partnerId],
-    queryFn: () => teamService.getTeamMembers(partnerId),
+    queryKey: ["team", currentUser?.role, currentUser?.partnerId],
+    // Non-SA must omit partnerId — backend scopes PA to their tenant and 403s partnerId filters.
+    queryFn: () => teamService.getTeamMembers(isSuperAdmin ? partnerId : undefined),
     enabled: canManageTeam,
   });
 
@@ -63,15 +64,25 @@ export default function TeamPage() {
       teamService.inviteTeamMember(payload),
     onSuccess: (newMember) => {
       queryClient.invalidateQueries({ queryKey: ["team"] });
+      const tempHint = newMember.temporaryPassword
+        ? ` Temporary password (copy now): ${newMember.temporaryPassword}`
+        : "";
       addToast({
         type: "success",
         title: "Invitation Sent",
-        message: `${newMember.name} has been invited as a ${newMember.role.replace("_", " ")}.`,
+        message: `${newMember.name} invited as ${newMember.role.replace("_", " ")}.${tempHint}`,
       });
       setIsInviteModalOpen(false);
       setInviteName("");
       setInviteEmail("");
       setInvitePhone("");
+    },
+    onError: (err: unknown) => {
+      addToast({
+        type: "error",
+        title: "Invite Failed",
+        message: (err as { message?: string })?.message || "Could not invite team member.",
+      });
     },
   });
 
@@ -231,14 +242,18 @@ export default function TeamPage() {
                 </TableCell>
 
                 <TableCell className="text-right">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toggleStatusMutation.mutate(member.id)}
-                    disabled={toggleStatusMutation.isPending}
-                  >
-                    {member.status === "active" ? "Deactivate" : "Activate"}
-                  </Button>
+                  {isSuperAdmin ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleStatusMutation.mutate(member.id)}
+                      disabled={toggleStatusMutation.isPending}
+                    >
+                      {member.status === "active" ? "Deactivate" : "Activate"}
+                    </Button>
+                  ) : (
+                    <span className="text-[11px] text-slate-400">—</span>
+                  )}
                 </TableCell>
               </TableRow>
             ))

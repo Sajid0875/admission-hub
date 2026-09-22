@@ -4,6 +4,8 @@
 
 export type PayoutStatus = "pending" | "requested" | "approved" | "paid" | "rejected";
 
+export type CommissionRuleType = "PERCENTAGE" | "FLAT";
+
 export interface CommissionRecord {
   id: string;
   partnerId: string;
@@ -30,4 +32,29 @@ export interface CommissionSummary {
   pendingPayout: number;
   totalPaid: number;
   lastPayoutDate?: string;
+}
+
+/** Backend CommissionRule config row (SA-managed). */
+export interface CommissionRule {
+  id: string;
+  courseId?: string | null;
+  partnerType?: string | null;
+  commissionType: CommissionRuleType;
+  rate: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateCommissionRulePayload {
+  courseId?: string | null;
+  partnerType?: string | null;
+  commissionType: CommissionRuleType;
+  rate: number;
+}
+
+export interface UpdateCommissionRulePayload {
+  courseId?: string | null;
+  partnerType?: string | null;
+  commissionType?: CommissionRuleType;
+  rate?: number;
 }

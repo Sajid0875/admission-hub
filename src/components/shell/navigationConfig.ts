@@ -10,6 +10,9 @@ import {
   Settings,
   HelpCircle,
   UserCheck,
+  BookOpen,
+  Megaphone,
+  Percent,
   type LucideIcon,
 } from "lucide-react";
 import type { UserRole, Permission } from "@/types/auth";
@@ -62,6 +65,20 @@ export const ALL_NAV_ITEMS: NavItemConfig[] = [
     allowedRoles: ["super_admin", "partner_admin", "team_member", "counselor", "support"],
   },
   {
+    id: "courses",
+    label: "Courses",
+    href: "/courses",
+    icon: BookOpen,
+    allowedRoles: ["super_admin", "partner_admin", "counselor", "support"],
+  },
+  {
+    id: "marketing",
+    label: "Marketing",
+    href: "/marketing",
+    icon: Megaphone,
+    allowedRoles: ["super_admin", "partner_admin", "counselor", "support"],
+  },
+  {
     id: "team",
     label: "Team",
     href: "/team",
@@ -76,6 +93,13 @@ export const ALL_NAV_ITEMS: NavItemConfig[] = [
     icon: DollarSign,
     allowedRoles: ["super_admin", "partner_admin"],
     requiredPermission: "commission:view",
+  },
+  {
+    id: "commission-rules",
+    label: "Commission Rules",
+    href: "/commission-rules",
+    icon: Percent,
+    allowedRoles: ["super_admin"],
   },
   {
     id: "reports",

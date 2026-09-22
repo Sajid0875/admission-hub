@@ -1,14 +1,12 @@
 /**
  * Automated Smoke Test Suite for WhiteDavid23 Partner Portal
- * Tests critical flows:
- * 1. Login & Auth User session
- * 2. Role-based Navigation filtering
- * 3. Lead list server-side pagination
- * 4. Lead creation success & backend-managed attributes
- * 5. Duplicate 409 error handling
- * 6. Permission 403 authorization guard
- * 7. Super Admin Commission Payout approval
+ * Tests critical flows against mock fixtures (NEXT_PUBLIC_USE_MOCKS=true).
  */
+
+// Force mock fixtures so smoke tests stay hermetic without a live DB seed set
+process.env.NEXT_PUBLIC_USE_MOCKS = "true";
+process.env.NEXT_PUBLIC_API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
 
 import { useAuthStore } from "../src/stores/useAuthStore";
 import { getAuthorizedNavItems, ALL_NAV_ITEMS } from "../src/components/shell/navigationConfig";

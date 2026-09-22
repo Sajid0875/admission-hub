@@ -9,30 +9,34 @@ import { authService } from "@/services/api/authService";
 import type { UserRole } from "@/types/auth";
 import type { NormalizedError } from "@/types/api";
 
-const PRESET_ACCOUNTS: { role: UserRole; label: string; email: string; desc: string }[] = [
+const PRESET_ACCOUNTS: { role: UserRole; label: string; email: string; password: string; desc: string }[] = [
+  {
+    role: "super_admin",
+    label: "Super Admin",
+    email: "admin@whitedavid23.local",
+    password: "ChangeMe!Adm1n2026",
+    desc: "prisma seed — stable credentials",
+  },
   {
     role: "partner_admin",
     label: "Partner Admin",
     email: "partner@whitedavid23.com",
-    desc: "Apex Academy management, leads & commissions",
+    password: "ChangeMe!Partner2026",
+    desc: "prisma seed — stable credentials",
   },
   {
-    role: "super_admin",
-    label: "Super Admin",
-    email: "superadmin@whitedavid23.com",
-    desc: "Global platform access, all partners & audit logs",
-  },
-  {
-    role: "team_member",
-    label: "Team Member",
-    email: "team@whitedavid23.com",
-    desc: "Assigned leads & follow-ups",
+    role: "counselor",
+    label: "Counselor",
+    email: "counselor@whitedavid23.com",
+    password: "ChangeMe!Counselor2026",
+    desc: "prisma seed — stable credentials",
   },
   {
     role: "support",
     label: "Support",
     email: "support@whitedavid23.com",
-    desc: "Ticket queues, verification & audit reviews",
+    password: "ChangeMe!Support2026",
+    desc: "prisma seed — stable credentials",
   },
 ];
 
@@ -41,9 +45,9 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl") || "/dashboard";
 
-  const [email, setEmail] = useState("partner@whitedavid23.com");
-  const [password, setPassword] = useState("password123");
-  const [selectedRole, setSelectedRole] = useState<UserRole>("partner_admin");
+  const [email, setEmail] = useState("admin@whitedavid23.local");
+  const [password, setPassword] = useState("ChangeMe!Adm1n2026");
+  const [selectedRole, setSelectedRole] = useState<UserRole>("super_admin");
   const [isLoading, setIsLoading] = useState(false);
 
   // Client validation errors
@@ -82,7 +86,7 @@ function LoginForm() {
 
   const handleSelectPreset = (preset: typeof PRESET_ACCOUNTS[number]) => {
     setEmail(preset.email);
-    setPassword("password123");
+    setPassword(preset.password);
     setSelectedRole(preset.role);
     setErrors({});
   };
@@ -98,14 +102,11 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
-      // Authenticate via authService (TODO-CONTRACT backed by development mock)
       const res = await authService.login({
         email: email.trim(),
         password,
-        requestedRole: selectedRole,
       });
 
-      // Save user & token to persistent Zustand store
       setAuth(res.user, res.token);
 
       addToast({
@@ -248,7 +249,7 @@ function LoginForm() {
                 >
                   Password
                 </label>
-                <span className="text-[11px] text-slate-500 font-medium">Demo: password123</span>
+                  <span className="text-[11px] text-slate-500 font-medium">Use Quick Role Preset</span>
               </div>
               <div className="relative">
                 <Lock
@@ -307,7 +308,7 @@ function LoginForm() {
           <div className="pt-2 border-t border-outline-variant/60 text-center">
             <div className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
               <Info className="w-3.5 h-3.5 text-primary" />
-              <span>TODO-CONTRACT: Backend Auth Gateway Pending</span>
+              <span>Connected to live API at {process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1"}</span>
             </div>
           </div>
         </div>

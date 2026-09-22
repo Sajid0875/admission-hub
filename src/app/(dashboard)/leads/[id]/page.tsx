@@ -24,6 +24,7 @@ import {
   X,
   History,
   Check,
+  GraduationCap,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -33,6 +34,7 @@ import { Modal } from "@/components/ui/Modal";
 import { LeadStatusBadge, LeadPriorityBadge, LeadScorePill } from "@/components/leads/LeadStatusBadge";
 import { LeadPipelineStepper } from "@/components/leads/LeadPipelineStepper";
 import { leadService } from "@/services/api/leadService";
+import { admissionService, type CourseOption } from "@/services/api/admissionService";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useUIStore } from "@/stores/useUIStore";
 import type { LeadStatus, LeadPriority, UpdateLeadPayload, FollowupTask } from "@/types/lead";
@@ -76,6 +78,13 @@ export default function LeadDetailPage() {
   const [followupNotes, setFollowupNotes] = useState<string>("");
   const [followupDate, setFollowupDate] = useState<string>("");
   const [followupPriority, setFollowupPriority] = useState<LeadPriority>("medium");
+
+  // Convert-to-admission modal (PARTNER_ADMIN / COUNSELOR only on backend)
+  const [isAdmitModalOpen, setIsAdmitModalOpen] = useState(false);
+  const [admitCourseId, setAdmitCourseId] = useState("");
+  const [admitFee, setAdmitFee] = useState("");
+  const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
 
   // Fetch lead data
   const {
@@ -126,6 +135,15 @@ export default function LeadDetailPage() {
   const isOwner = lead?.assignedTo === currentUser?.id || !lead?.assignedTo;
   const canUpdate =
     hasPermission("lead:update") || (currentUser?.role === "team_member" && isOwner);
+  // Backend POST /followups allows PARTNER_ADMIN + COUNSELOR only (not SUPER_ADMIN).
+  const canCreateFollowup =
+    currentUser?.role === "partner_admin" ||
+    currentUser?.role === "counselor" ||
+    currentUser?.role === "team_member";
+  // Backend POST /admissions allows PARTNER_ADMIN + COUNSELOR only.
+  const canConvertAdmission =
+    currentUser?.role === "partner_admin" || currentUser?.role === "counselor";
+  const isAlreadyAdmitted = lead?.status === "admitted";
 
   // Mutation to update lead fields/status
   const updateMutation = useMutation({
@@ -165,7 +183,65 @@ export default function LeadDetailPage() {
       setFollowupNotes("");
       setFollowupDate("");
     },
+    onError: (err: unknown) => {
+      addToast({
+        type: "error",
+        title: "Follow-up Failed",
+        message: (err as { message?: string })?.message || "Could not schedule follow-up task.",
+      });
+    },
   });
+
+  const convertAdmissionMutation = useMutation({
+    mutationFn: () =>
+      admissionService.createAdmission({
+        leadId,
+        courseId: admitCourseId,
+        fee: Number(admitFee),
+        studentName: lead?.studentName,
+        joiningDate: new Date().toISOString(),
+      }),
+    onSuccess: (admission) => {
+      queryClient.invalidateQueries({ queryKey: ["lead", leadId] });
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["admissions"] });
+      addToast({
+        type: "success",
+        title: "Admission Created",
+        message: `${admission.studentName} converted. Verify from Admissions to generate commission.`,
+      });
+      setIsAdmitModalOpen(false);
+      router.push("/admissions");
+    },
+    onError: (err: unknown) => {
+      addToast({
+        type: "error",
+        title: "Conversion Failed",
+        message: (err as { message?: string })?.message || "Could not create admission.",
+      });
+    },
+  });
+
+  const openAdmitModal = async () => {
+    setIsAdmitModalOpen(true);
+    setCoursesLoading(true);
+    try {
+      const list = await admissionService.listCourses();
+      setCourses(list);
+      if (list[0]) {
+        setAdmitCourseId(list[0].id);
+        setAdmitFee(String(list[0].fee || ""));
+      }
+    } catch (err: unknown) {
+      addToast({
+        type: "error",
+        title: "Courses Unavailable",
+        message: (err as { message?: string })?.message || "Could not load courses.",
+      });
+    } finally {
+      setCoursesLoading(false);
+    }
+  };
 
   const handleStatusTransition = (newStatus: LeadStatus) => {
     if (!canUpdate) {
@@ -256,14 +332,27 @@ export default function LeadDetailPage() {
             </Button>
           )}
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsFollowupModalOpen(true)}
-            leftIcon={<Calendar className="w-3.5 h-3.5" />}
-          >
-            Schedule Follow-up
-          </Button>
+          {canCreateFollowup && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFollowupModalOpen(true)}
+              leftIcon={<Calendar className="w-3.5 h-3.5" />}
+            >
+              Schedule Follow-up
+            </Button>
+          )}
+
+          {canConvertAdmission && !isAlreadyAdmitted && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => void openAdmitModal()}
+              leftIcon={<GraduationCap className="w-3.5 h-3.5" />}
+            >
+              Convert to Admission
+            </Button>
+          )}
         </div>
       </div>
 
@@ -569,21 +658,25 @@ export default function LeadDetailPage() {
                 <Clock className="w-4 h-4 text-amber-600" />
                 Scheduled Follow-up Tasks
               </h3>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsFollowupModalOpen(true)}
-                leftIcon={<Plus className="w-3.5 h-3.5" />}
-              >
-                Add Task
-              </Button>
+              {canCreateFollowup && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsFollowupModalOpen(true)}
+                  leftIcon={<Plus className="w-3.5 h-3.5" />}
+                >
+                  Add Task
+                </Button>
+              )}
             </div>
 
             {isLoadingFollowups ? (
               <div className="py-4 text-center text-xs text-slate-400">Loading tasks...</div>
             ) : followups.length === 0 ? (
               <div className="p-6 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs text-slate-500">
-                No active follow-up tasks. Click &quot;Add Task&quot; to set a reminder.
+                {canCreateFollowup
+                  ? 'No active follow-up tasks. Click "Add Task" to set a reminder.'
+                  : "No active follow-up tasks for this lead."}
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -779,6 +872,75 @@ export default function LeadDetailPage() {
               ]}
             />
           </div>
+        </div>
+      </Modal>
+
+      {/* Convert Lead → Admission */}
+      <Modal
+        isOpen={isAdmitModalOpen}
+        onClose={() => setIsAdmitModalOpen(false)}
+        title="Convert to Admission"
+        description="Creates an enrollment from this lead and marks the lead as admitted."
+        size="md"
+        footer={
+          <div className="flex items-center justify-end gap-2 w-full">
+            <Button variant="outline" size="sm" onClick={() => setIsAdmitModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                if (!admitCourseId || !admitFee || Number(admitFee) <= 0) {
+                  addToast({
+                    type: "error",
+                    title: "Missing Fields",
+                    message: "Select a course and enter a valid fee.",
+                  });
+                  return;
+                }
+                convertAdmissionMutation.mutate();
+              }}
+              isLoading={convertAdmissionMutation.isPending}
+              leftIcon={<GraduationCap className="w-4 h-4" />}
+            >
+              Create Admission
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          {coursesLoading ? (
+            <p className="text-xs text-slate-500">Loading courses...</p>
+          ) : courses.length === 0 ? (
+            <Alert variant="error" title="No courses available">
+              Seed a demo course (`npm run prisma:seed`) or create one via Courses API.
+            </Alert>
+          ) : (
+            <>
+              <Select
+                label="Course *"
+                value={admitCourseId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setAdmitCourseId(id);
+                  const match = courses.find((c) => c.id === id);
+                  if (match) setAdmitFee(String(match.fee));
+                }}
+                options={courses.map((c) => ({
+                  value: c.id,
+                  label: `${c.title} (₹${c.fee.toLocaleString()})`,
+                }))}
+              />
+              <Input
+                label="Admission Fee (INR) *"
+                type="number"
+                value={admitFee}
+                onChange={(e) => setAdmitFee(e.target.value)}
+                required
+              />
+            </>
+          )}
         </div>
       </Modal>
     </div>

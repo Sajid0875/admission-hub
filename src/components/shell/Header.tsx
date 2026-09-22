@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Menu,
   Bell,
@@ -9,13 +10,13 @@ import {
   Building2,
   LogOut,
   ChevronDown,
-  User,
   Check,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useUIStore } from "@/stores/useUIStore";
 import type { UserRole } from "@/types/auth";
 import { MOCK_ROLE_PROFILES } from "@/services/api/authService";
+import { notificationService } from "@/services/api/adminService";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 
 interface HeaderProps {
@@ -38,6 +39,14 @@ export function Header({
   const setAuth = useAuthStore((state) => state.setAuth);
   const logout = useAuthStore((state) => state.logout);
   const addToast = useUIStore((state) => state.addToast);
+
+  // Live unread badge — polls while authenticated; drawer invalidates this key on mark-read.
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ["notifications-unread-count"],
+    queryFn: () => notificationService.getUnreadCount(),
+    enabled: Boolean(user),
+    refetchInterval: 60_000,
+  });
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -130,14 +139,24 @@ export function Header({
           <Search className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
 
-        {/* Notifications trigger */}
+        {/* Notifications trigger — badge only when unreadCount > 0 */}
         <button
           onClick={() => setIsNotificationOpen(true)}
           className="p-2 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors relative"
-          aria-label="Notifications"
+          aria-label={
+            unreadCount > 0
+              ? `Notifications, ${unreadCount} unread`
+              : "Notifications"
+          }
         >
           <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-          <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-2 ring-2 ring-white" />
+          {unreadCount > 0 && (
+            <span className="absolute top-1.5 right-1.5 min-w-[0.5rem] h-2 px-0.5 rounded-full bg-rose-500 ring-2 ring-white flex items-center justify-center">
+              {unreadCount > 9 ? (
+                <span className="sr-only">{unreadCount} unread</span>
+              ) : null}
+            </span>
+          )}
         </button>
 
         {/* Role Badge Indicator */}

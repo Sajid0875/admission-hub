@@ -1,6 +1,12 @@
 import { apiClient } from "./client";
 import type { PaginatedResponse, NormalizedError } from "@/types/api";
 import type { CommissionRecord, CommissionSummary, PayoutStatus } from "@/types/commission";
+import { areMocksEnabled, isMockableOfflineError } from "@/lib/mocks";
+import {
+  mapBackendCommission,
+  normalizePaginatedResponse,
+  summarizeCommissions,
+} from "@/lib/mappers";
 
 const SEED_COMMISSIONS: CommissionRecord[] = [
   {
@@ -46,9 +52,7 @@ const SEED_COMMISSIONS: CommissionRecord[] = [
     earnedAmount: 4500,
     pendingAmount: 4500,
     paidAmount: 0,
-    payoutStatus: "requested",
-    requestedAt: new Date(Date.now() - 3600000 * 8).toISOString(),
-    notes: "Awaiting Super Admin payout clearance.",
+    payoutStatus: "pending",
     createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
   },
   {
@@ -63,7 +67,6 @@ const SEED_COMMISSIONS: CommissionRecord[] = [
     pendingAmount: 1500,
     paidAmount: 0,
     payoutStatus: "pending",
-    notes: "Under cooling period before payout request eligibility.",
     createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
   },
 ];
@@ -89,137 +92,164 @@ export interface PayoutApprovalResponse {
   };
 }
 
-/**
- * Commission API Service
- * Includes confirmed PATCH /api/v1/commissions/{id}/payout endpoint.
- */
+const STATUS_TO_BE: Record<string, string> = {
+  pending: "PENDING",
+  requested: "PENDING",
+  approved: "APPROVED",
+  paid: "PAID",
+  rejected: "CANCELLED",
+};
+
+function shouldUseMockFallback(err: unknown): boolean {
+  if (!areMocksEnabled()) return false;
+  return isMockableOfflineError(err as NormalizedError);
+}
+
 export const commissionService = {
-  /**
-   * GET /api/v1/commissions
-   * TODO-CONTRACT: List commissions with pagination & filters
-   */
-  async getCommissions(params: CommissionQueryParams = {}): Promise<PaginatedResponse<CommissionRecord>> {
+  async getCommissions(
+    params: CommissionQueryParams = {}
+  ): Promise<PaginatedResponse<CommissionRecord>> {
     const { page = 1, limit = 10, payoutStatus = "all", search = "", partnerId } = params;
+
+    if (areMocksEnabled()) {
+      let filtered = [...localCommissionsStore];
+      if (partnerId) filtered = filtered.filter((c) => c.partnerId === partnerId);
+      if (payoutStatus && payoutStatus !== "all") {
+        filtered = filtered.filter((c) => c.payoutStatus === payoutStatus);
+      }
+      if (search.trim()) {
+        const q = search.toLowerCase().trim();
+        filtered = filtered.filter(
+          (c) =>
+            (c.studentName && c.studentName.toLowerCase().includes(q)) ||
+            (c.courseName && c.courseName.toLowerCase().includes(q)) ||
+            c.id.toLowerCase().includes(q)
+        );
+      }
+      const total = filtered.length;
+      const totalPages = Math.ceil(total / limit) || 1;
+      const offset = (page - 1) * limit;
+      return {
+        success: true,
+        data: filtered.slice(offset, offset + limit),
+        meta: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      };
+    }
 
     const queryParams = new URLSearchParams();
     queryParams.set("page", String(page));
     queryParams.set("limit", String(limit));
-    if (payoutStatus && payoutStatus !== "all") queryParams.set("payoutStatus", payoutStatus);
-    if (search.trim()) queryParams.set("search", search.trim());
+    if (payoutStatus && payoutStatus !== "all") {
+      queryParams.set("status", STATUS_TO_BE[payoutStatus] ?? payoutStatus.toUpperCase());
+    }
     if (partnerId) queryParams.set("partnerId", partnerId);
 
     try {
-      return await apiClient.getPaginated<CommissionRecord>(`/commissions?${queryParams.toString()}`);
-    } catch (err: unknown) {
-      const normErr = err as NormalizedError;
-      if (normErr.code === "NETWORK_ERROR" || normErr.statusCode === 404) {
-        let filtered = [...localCommissionsStore];
-
-        if (partnerId) {
-          filtered = filtered.filter((c) => c.partnerId === partnerId);
-        }
-
-        if (payoutStatus && payoutStatus !== "all") {
-          filtered = filtered.filter((c) => c.payoutStatus === payoutStatus);
-        }
-
-        if (search.trim()) {
-          const q = search.toLowerCase().trim();
-          filtered = filtered.filter(
-            (c) =>
-              (c.studentName && c.studentName.toLowerCase().includes(q)) ||
-              (c.courseName && c.courseName.toLowerCase().includes(q)) ||
-              c.id.toLowerCase().includes(q)
-          );
-        }
-
-        const total = filtered.length;
-        const totalPages = Math.ceil(total / limit) || 1;
-        const offset = (page - 1) * limit;
-
-        return {
-          success: true,
-          data: filtered.slice(offset, offset + limit),
-          meta: {
-            page,
-            limit,
-            total,
-            totalPages,
-            hasNextPage: page < totalPages,
-            hasPrevPage: page > 1,
-          },
+      const raw = await apiClient.getRawInstance().get(`/commissions?${queryParams.toString()}`);
+      let pageResult = normalizePaginatedResponse(raw.data, mapBackendCommission);
+      if (search.trim()) {
+        const q = search.toLowerCase().trim();
+        const filtered = pageResult.data.filter(
+          (c) =>
+            (c.studentName && c.studentName.toLowerCase().includes(q)) ||
+            (c.courseName && c.courseName.toLowerCase().includes(q)) ||
+            c.id.toLowerCase().includes(q)
+        );
+        pageResult = {
+          ...pageResult,
+          data: filtered,
+          meta: { ...pageResult.meta, total: filtered.length },
         };
       }
+      return pageResult;
+    } catch (err: unknown) {
+      if (!shouldUseMockFallback(err)) throw err;
       throw err;
     }
   },
 
   /**
-   * GET /api/v1/commissions/summary
-   * TODO-CONTRACT: Fetch summary financials directly from backend
-   * Never calculated on the client!
+   * Summary: backend has no /commissions/summary — derive from list.
    */
   async getCommissionSummary(partnerId?: string): Promise<CommissionSummary> {
-    const queryParams = partnerId ? `?partnerId=${partnerId}` : "";
     try {
-      return await apiClient.get<CommissionSummary>(`/commissions/summary${queryParams}`);
+      const list = await this.getCommissions({ page: 1, limit: 100, partnerId });
+      return summarizeCommissions(list.data);
     } catch (err: unknown) {
-      const normErr = err as NormalizedError;
-      if (normErr.code === "NETWORK_ERROR" || normErr.statusCode === 404) {
-        // Backend fixture summary values
-        if (partnerId) {
-          return {
-            totalEarned: 15000,
-            pendingPayout: 9500,
-            totalPaid: 5500,
-            lastPayoutDate: "2026-08-30T10:00:00Z",
-          };
-        }
+      if (!shouldUseMockFallback(err)) throw err;
+      if (partnerId) {
         return {
-          totalEarned: 114500,
-          pendingPayout: 18600,
-          totalPaid: 95900,
+          totalEarned: 15000,
+          pendingPayout: 9500,
+          totalPaid: 5500,
           lastPayoutDate: "2026-08-30T10:00:00Z",
         };
       }
-      throw err;
+      return {
+        totalEarned: 114500,
+        pendingPayout: 18600,
+        totalPaid: 95900,
+        lastPayoutDate: "2026-08-30T10:00:00Z",
+      };
     }
   },
 
   /**
-   * Confirmed Keystone Contract:
-   * PATCH /api/v1/commissions/{id}/payout
-   * Body: { action: 'approve' }
-   * Role constraint: Super Admin only (permission: commission:approve_payout).
-   * 403 FORBIDDEN if unauthorized.
+   * Approve payout via PATCH /commissions/:id/status { status: "APPROVED" }.
    */
   async approvePayout(commissionId: string): Promise<PayoutApprovalResponse["data"]> {
-    try {
-      const res = await apiClient.patch<PayoutApprovalResponse["data"]>(
-        `/commissions/${commissionId}/payout`,
-        { action: "approve" }
-      );
-      return res;
-    } catch (err: unknown) {
-      const normErr = err as NormalizedError;
-      if (normErr.code === "NETWORK_ERROR" || normErr.statusCode === 404) {
-        const index = localCommissionsStore.findIndex((c) => c.id === commissionId);
-        if (index !== -1) {
-          localCommissionsStore[index] = {
-            ...localCommissionsStore[index],
-            payoutStatus: "approved",
-            payoutDate: new Date().toISOString(),
-            approvedAt: new Date().toISOString(),
-          };
-          return {
-            id: commissionId,
-            payoutStatus: "approved",
-            payoutDate: new Date().toISOString(),
-            approvedAmount: localCommissionsStore[index].earnedAmount,
-            transactionReference: `TXN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-          };
-        }
+    if (areMocksEnabled()) {
+      const index = localCommissionsStore.findIndex((c) => c.id === commissionId);
+      if (index !== -1) {
+        const now = new Date().toISOString();
+        localCommissionsStore[index] = {
+          ...localCommissionsStore[index],
+          payoutStatus: "approved",
+          approvedAt: now,
+          payoutDate: now,
+          pendingAmount: localCommissionsStore[index].earnedAmount,
+        };
+        return {
+          id: commissionId,
+          payoutStatus: "approved",
+          payoutDate: now,
+          approvedAmount: localCommissionsStore[index].earnedAmount,
+          transactionReference: `TXN-MOCK-${Date.now()}`,
+        };
       }
+      const error: NormalizedError = {
+        isNormalized: true,
+        code: "NOT_FOUND",
+        message: "Commission record not found",
+        statusCode: 404,
+      };
+      throw error;
+    }
+
+    try {
+      const res = await apiClient.getRawInstance().patch<{ commission: {
+        id: string;
+        commissionAmount: number;
+        status: string;
+        paidAt?: string | null;
+      } }>(`/commissions/${commissionId}/status`, { status: "APPROVED" });
+
+      const c = res.data.commission;
+      return {
+        id: c.id,
+        payoutStatus: "approved",
+        payoutDate: new Date().toISOString(),
+        approvedAmount: Number(c.commissionAmount),
+        transactionReference: `TXN-${c.id.slice(0, 8).toUpperCase()}`,
+      };
+    } catch (err: unknown) {
       throw err;
     }
   },

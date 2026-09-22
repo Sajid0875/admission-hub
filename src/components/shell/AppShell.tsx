@@ -45,9 +45,33 @@ export function AppShell({ children }: AppShellProps) {
     );
   }
 
-  // Derive human-readable page title from pathname
+  // Derive human-readable page title from pathname (skip UUID/cuid detail segments)
   const segments = pathname.split("/").filter(Boolean);
-  const pageTitle = segments.length > 0 ? segments[segments.length - 1].replace(/-/g, " ") : "Dashboard";
+  const UUID_LIKE =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const TITLE_OVERRIDES: Record<string, string> = {
+    dashboard: "Dashboard",
+    partners: "Partners",
+    leads: "Leads",
+    "follow-ups": "Follow Ups",
+    admissions: "Admissions",
+    courses: "Courses",
+    marketing: "Marketing",
+    team: "Team",
+    commissions: "Commissions",
+    "commission-rules": "Commission Rules",
+    reports: "Reports",
+    audit: "Audit Logs",
+    support: "Support Desk",
+    settings: "Settings",
+  };
+  let titleSegment = segments[segments.length - 1] || "dashboard";
+  if (UUID_LIKE.test(titleSegment) && segments.length >= 2) {
+    titleSegment = segments[segments.length - 2];
+  }
+  const pageTitle =
+    TITLE_OVERRIDES[titleSegment] ||
+    titleSegment.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
     <div className="min-h-screen bg-background text-on-background flex antialiased">

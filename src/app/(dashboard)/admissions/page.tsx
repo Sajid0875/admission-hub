@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   GraduationCap,
   Search,
@@ -17,6 +17,7 @@ import {
   Receipt,
   User,
   X,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -32,9 +33,17 @@ import {
 } from "@/components/ui/Table";
 import { Modal } from "@/components/ui/Modal";
 import { admissionService } from "@/services/api/admissionService";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useUIStore } from "@/stores/useUIStore";
 import type { Admission, PaymentStatus } from "@/types/admission";
 
 export default function AdmissionsPage() {
+  const queryClient = useQueryClient();
+  const addToast = useUIStore((state) => state.addToast);
+  const currentUser = useAuthStore((state) => state.user);
+  const canVerify =
+    currentUser?.role === "super_admin" || currentUser?.role === "partner_admin";
+
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(10);
   const [search, setSearch] = useState<string>("");
@@ -55,6 +64,29 @@ export default function AdmissionsPage() {
   const admissions = data?.data || [];
   const meta = data?.meta || { page: 1, limit: 10, total: 0 };
   const totalPages = meta.totalPages || Math.ceil(meta.total / meta.limit) || 1;
+
+  const verifyMutation = useMutation({
+    mutationFn: (admissionId: string) =>
+      admissionService.verifyAdmission(admissionId, "VERIFIED"),
+    onSuccess: (adm) => {
+      queryClient.invalidateQueries({ queryKey: ["admissions"] });
+      queryClient.invalidateQueries({ queryKey: ["commissions"] });
+      queryClient.invalidateQueries({ queryKey: ["commission-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["audit-logs"] });
+      addToast({
+        type: "success",
+        title: "Admission Verified",
+        message: `${adm.studentName} verified — commission record generated if a rule exists.`,
+      });
+    },
+    onError: (err: unknown) => {
+      addToast({
+        type: "error",
+        title: "Verification Failed",
+        message: (err as { message?: string })?.message || "Could not verify admission.",
+      });
+    },
+  });
 
   const getStatusBadge = (status: PaymentStatus) => {
     switch (status) {
@@ -228,13 +260,26 @@ export default function AdmissionsPage() {
                   </TableCell>
 
                   <TableCell className="text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedAdmission(adm)}
-                    >
-                      Receipt & Details
-                    </Button>
+                    <div className="inline-flex items-center gap-2">
+                      {canVerify && adm.verificationStatus === "pending" && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => verifyMutation.mutate(adm.id)}
+                          isLoading={verifyMutation.isPending}
+                          leftIcon={<ShieldCheck className="w-3.5 h-3.5" />}
+                        >
+                          Verify
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedAdmission(adm)}
+                      >
+                        Receipt & Details
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

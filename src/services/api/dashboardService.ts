@@ -1,5 +1,7 @@
 import type { UserRole } from "@/types/auth";
 import type { NormalizedError } from "@/types/api";
+import { apiClient } from "./client";
+import { areMocksEnabled } from "@/lib/mocks";
 
 /**
  * Dashboard Service & Contract Definitions
@@ -631,19 +633,33 @@ const SUPPORT_FIXTURE: DashboardSummaryData = {
   },
 };
 
+function fixtureForRole(
+  role: UserRole,
+  partnerId?: string | null
+): DashboardSummaryData {
+  switch (role) {
+    case "super_admin":
+      return { ...SUPER_ADMIN_FIXTURE, partnerId: partnerId ?? null };
+    case "team_member":
+    case "counselor":
+      return { ...TEAM_MEMBER_FIXTURE, partnerId: partnerId ?? null, role };
+    case "support":
+      return { ...SUPPORT_FIXTURE, partnerId: partnerId ?? null };
+    case "partner_admin":
+    default:
+      return { ...PARTNER_ADMIN_FIXTURE, partnerId: partnerId ?? null, role: "partner_admin" };
+  }
+}
+
 export const dashboardService = {
   /**
-   * Fetch aggregate dashboard summary for the active role & partner context
-   * TODO-CONTRACT: Connect to GET /api/v1/dashboard/summary once backend provisions aggregate route
+   * Prefer GET /reports/dashboard when live; fall back to role fixtures only when mocks are enabled.
    */
   async getDashboardSummary(
     role: UserRole = "partner_admin",
     partnerId?: string | null,
     options?: { simulateError?: boolean; simulateEmpty?: boolean }
   ): Promise<DashboardSummaryData> {
-    // Realistic API network simulation
-    await new Promise((resolve) => setTimeout(resolve, 450));
-
     if (options?.simulateError) {
       const error: NormalizedError = {
         isNormalized: true,
@@ -666,17 +682,183 @@ export const dashboardService = {
       };
     }
 
-    switch (role) {
-      case "super_admin":
-        return SUPER_ADMIN_FIXTURE;
-      case "team_member":
-      case "counselor":
-        return TEAM_MEMBER_FIXTURE;
-      case "support":
-        return SUPPORT_FIXTURE;
-      case "partner_admin":
-      default:
-        return PARTNER_ADMIN_FIXTURE;
+    if (!areMocksEnabled()) {
+      try {
+        // Counselors/support cannot access GET /reports/dashboard (SA/PA only).
+        if (role === "counselor" || role === "team_member" || role === "support") {
+          const leadsRes = await apiClient.getRawInstance().get("/leads", {
+            params: { page: 1, limit: 1 },
+          });
+          const total =
+            (leadsRes.data as { pagination?: { total?: number } })?.pagination?.total ??
+            (leadsRes.data as { meta?: { total?: number } })?.meta?.total ??
+            0;
+          return {
+            role,
+            partnerId: partnerId ?? null,
+            lastUpdated: new Date().toISOString(),
+            kpis: [
+              {
+                id: "leads",
+                label: "My Leads",
+                value: String(total),
+                changeType: "neutral",
+                iconName: "users",
+              },
+              {
+                id: "followups",
+                label: "Pending Follow-ups",
+                value: "—",
+                changeType: "neutral",
+                iconName: "clock",
+              },
+            ],
+            pipeline: [],
+            upcomingFollowUps: [],
+            recentActivity: [],
+          };
+        }
+
+        const client = apiClient.getRawInstance();
+        const q = partnerId ? `?partnerId=${partnerId}` : "";
+        const [dashRes, partnersRes] = await Promise.all([
+          client.get(`/reports/dashboard${q}`),
+          role === "super_admin"
+            ? client.get("/partners", { params: { page: 1, limit: 1, status: "ACTIVE" } }).catch(() => null)
+            : Promise.resolve(null),
+        ]);
+        const dash = dashRes.data as {
+          summary?: Record<string, number>;
+          funnel?: Array<{ status: string; count: number }>;
+        };
+        const summary = (dash.summary ?? dash) as Record<string, number | undefined>;
+        const followUps =
+          (summary.pendingFollowUps ?? 0) ||
+          (summary.todayFollowUps ?? 0) + (summary.overdueFollowUps ?? 0);
+        const activePartners =
+          (partnersRes?.data as { pagination?: { total?: number } } | undefined)?.pagination?.total ??
+          0;
+
+        const stageMeta: Record<
+          string,
+          { stage: PipelineStageSummary["stage"]; label: string; colorClass: string }
+        > = {
+          NEW: { stage: "new", label: "New", colorClass: "bg-blue-500" },
+          CONTACTED: { stage: "contacted", label: "Contacted", colorClass: "bg-indigo-500" },
+          FOLLOW_UP: { stage: "follow_up", label: "Follow Up", colorClass: "bg-amber-500" },
+          DEMO: { stage: "demo", label: "Demo", colorClass: "bg-purple-500" },
+          ADMITTED: { stage: "admitted", label: "Admitted", colorClass: "bg-emerald-500" },
+          LOST: { stage: "lost", label: "Lost", colorClass: "bg-slate-400" },
+        };
+
+        const pipeline: PipelineStageSummary[] = (dash.funnel ?? []).map((row) => {
+          const meta = stageMeta[row.status] ?? {
+            stage: "new" as const,
+            label: row.status,
+            colorClass: "bg-slate-400",
+          };
+          return { ...meta, count: row.count, leads: [] };
+        });
+
+        const kpis: KpiMetric[] =
+          role === "super_admin"
+            ? [
+                {
+                  id: "active_partners",
+                  label: "Active Partners",
+                  value: String(activePartners),
+                  changeType: "neutral",
+                  iconName: "building",
+                },
+                {
+                  id: "leads",
+                  label: "Total Leads",
+                  value: String(summary.totalLeads ?? 0),
+                  changeType: "neutral",
+                  iconName: "users",
+                },
+                {
+                  id: "admissions",
+                  label: "Admissions",
+                  value: String(summary.totalAdmissions ?? 0),
+                  changeType: "neutral",
+                  iconName: "graduation-cap",
+                },
+                {
+                  id: "pending_commission",
+                  label: "Pending Commission",
+                  value: `$${Number(summary.pendingCommission ?? 0).toLocaleString()}`,
+                  changeType: "neutral",
+                  iconName: "dollar-sign",
+                },
+              ]
+            : [
+                {
+                  id: "leads",
+                  label: "Total Leads",
+                  value: String(summary.totalLeads ?? 0),
+                  changeType: "neutral",
+                  iconName: "users",
+                },
+                {
+                  id: "admissions",
+                  label: "Admissions",
+                  value: String(summary.totalAdmissions ?? 0),
+                  changeType: "neutral",
+                  iconName: "graduation-cap",
+                },
+                {
+                  id: "revenue",
+                  label: "Revenue",
+                  value: `$${Number(summary.totalRevenue ?? summary.revenue ?? 0).toLocaleString()}`,
+                  changeType: "neutral",
+                  iconName: "dollar-sign",
+                },
+                {
+                  id: "followups",
+                  label: "Pending Follow-ups",
+                  value: String(followUps),
+                  changeType: "neutral",
+                  iconName: "clock",
+                },
+              ];
+
+        // Live path must not spread mock fixtures (pipeline / reminders / activity).
+        return {
+          role,
+          partnerId: partnerId ?? null,
+          partnerName:
+            role === "super_admin" ? "WhiteDavid23 Global Platform" : undefined,
+          lastUpdated: new Date().toISOString(),
+          kpis,
+          pipeline,
+          upcomingFollowUps: [],
+          recentActivity: [],
+          commission:
+            role === "super_admin" || role === "partner_admin"
+              ? {
+                  totalEarned: Number(summary.paidCommission ?? 0) + Number(summary.pendingCommission ?? 0),
+                  pendingPayout: Number(summary.pendingCommission ?? 0),
+                  paidOut: Number(summary.paidCommission ?? 0),
+                  currency: "USD",
+                  eligibleForPayout: Number(summary.pendingCommission ?? 0) > 0,
+                }
+              : undefined,
+        };
+      } catch {
+        return {
+          role,
+          partnerId,
+          lastUpdated: new Date().toISOString(),
+          kpis: [],
+          pipeline: [],
+          upcomingFollowUps: [],
+          recentActivity: [],
+        };
+      }
     }
+
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    return fixtureForRole(role, partnerId);
   },
 };

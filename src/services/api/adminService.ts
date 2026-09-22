@@ -1,7 +1,20 @@
 import { apiClient } from "./client";
-import type { PaginatedResponse, NormalizedError } from "@/types/api";
+import type { NormalizedError } from "@/types/api";
 import type { Partner, PartnerStatus } from "@/types/partner";
-import type { AuthUser, UserRole } from "@/types/auth";
+import type { UserRole } from "@/types/auth";
+import { areMocksEnabled, isMockableOfflineError } from "@/lib/mocks";
+import {
+  mapBackendPartner,
+  mapBackendRole,
+  mapFrontendRoleToBackend,
+  normalizePaginatedResponse,
+  ROLE_PERMISSIONS,
+} from "@/lib/mappers";
+
+function shouldUseMockFallback(err: unknown): boolean {
+  if (!areMocksEnabled()) return false;
+  return isMockableOfflineError(err as NormalizedError);
+}
 
 // --- Partners Domain ---
 const SEED_PARTNERS: Partner[] = [
@@ -29,30 +42,6 @@ const SEED_PARTNERS: Partner[] = [
     contact: { city: "Bangalore", state: "Karnataka" },
     createdAt: "2026-08-25T14:30:00Z",
   },
-  {
-    id: "partner_003",
-    academyName: "Beacon Learning Hub",
-    ownerName: "Marcus Vance",
-    email: "director@beaconhub.org",
-    phone: "+1 415 555 0192",
-    status: "pending",
-    commissionType: "percentage",
-    commissionRate: 15,
-    contact: { city: "San Francisco", state: "CA" },
-    createdAt: "2026-09-02T11:20:00Z",
-  },
-  {
-    id: "partner_004",
-    academyName: "Nexus Digital Academy",
-    ownerName: "Kavita Rao",
-    email: "admin@nexusacademy.in",
-    phone: "+91 99000 11223",
-    status: "active",
-    commissionType: "percentage",
-    commissionRate: 10,
-    contact: { city: "Hyderabad", state: "Telangana" },
-    createdAt: "2026-03-10T08:15:00Z",
-  },
 ];
 
 let localPartnersStore: Partner[] = [...SEED_PARTNERS];
@@ -60,50 +49,61 @@ let localPartnersStore: Partner[] = [...SEED_PARTNERS];
 export const partnerService = {
   async getPartners(): Promise<Partner[]> {
     try {
-      return await apiClient.get<Partner[]>("/partners");
+      const raw = await apiClient.getRawInstance().get("/partners");
+      return normalizePaginatedResponse(raw.data, mapBackendPartner).data;
     } catch (err: unknown) {
-      const normErr = err as NormalizedError;
-      if (normErr.code === "NETWORK_ERROR" || normErr.statusCode === 404) {
-        return [...localPartnersStore];
-      }
-      throw err;
+      if (!shouldUseMockFallback(err)) throw err;
+      return [...localPartnersStore];
     }
   },
 
+  /** Approve via PATCH /partners/:id/status { status: "ACTIVE" }. */
   async approvePartner(partnerId: string): Promise<Partner> {
     try {
-      return await apiClient.patch<Partner>(`/partners/${partnerId}/approve`, { status: "active" });
+      const res = await apiClient
+        .getRawInstance()
+        .patch<{ partner: unknown }>(`/partners/${partnerId}/status`, {
+          status: "ACTIVE",
+        });
+      return mapBackendPartner(res.data.partner ?? res.data);
     } catch (err: unknown) {
-      const normErr = err as NormalizedError;
-      if (normErr.code === "NETWORK_ERROR" || normErr.statusCode === 404) {
-        const idx = localPartnersStore.findIndex((p) => p.id === partnerId);
-        if (idx !== -1) {
-          localPartnersStore[idx] = { ...localPartnersStore[idx], status: "active" };
-          return localPartnersStore[idx];
-        }
+      if (!shouldUseMockFallback(err)) throw err;
+      const idx = localPartnersStore.findIndex((p) => p.id === partnerId);
+      if (idx !== -1) {
+        localPartnersStore[idx] = { ...localPartnersStore[idx], status: "active" };
+        return localPartnersStore[idx];
       }
       throw err;
     }
   },
 
   async updatePartnerStatus(partnerId: string, status: PartnerStatus): Promise<Partner> {
+    const statusMap: Record<PartnerStatus, string> = {
+      pending: "PENDING",
+      active: "ACTIVE",
+      suspended: "SUSPENDED",
+      rejected: "REJECTED",
+    };
     try {
-      return await apiClient.patch<Partner>(`/partners/${partnerId}/status`, { status });
+      const res = await apiClient
+        .getRawInstance()
+        .patch<{ partner: unknown }>(`/partners/${partnerId}/status`, {
+          status: statusMap[status],
+        });
+      return mapBackendPartner(res.data.partner ?? res.data);
     } catch (err: unknown) {
-      const normErr = err as NormalizedError;
-      if (normErr.code === "NETWORK_ERROR" || normErr.statusCode === 404) {
-        const idx = localPartnersStore.findIndex((p) => p.id === partnerId);
-        if (idx !== -1) {
-          localPartnersStore[idx] = { ...localPartnersStore[idx], status };
-          return localPartnersStore[idx];
-        }
+      if (!shouldUseMockFallback(err)) throw err;
+      const idx = localPartnersStore.findIndex((p) => p.id === partnerId);
+      if (idx !== -1) {
+        localPartnersStore[idx] = { ...localPartnersStore[idx], status };
+        return localPartnersStore[idx];
       }
       throw err;
     }
   },
 };
 
-// --- Team Domain ---
+// --- Team Domain (maps to /users) ---
 export interface TeamMember {
   id: string;
   name: string;
@@ -115,6 +115,8 @@ export interface TeamMember {
   assignedLeadsCount?: number;
   lastActive?: string;
   createdAt: string;
+  /** Returned once from POST /users invite — never persisted client-side. */
+  temporaryPassword?: string;
 }
 
 const SEED_TEAM_MEMBERS: TeamMember[] = [
@@ -142,72 +144,105 @@ const SEED_TEAM_MEMBERS: TeamMember[] = [
     lastActive: "1 hour ago",
     createdAt: "2026-03-15T11:00:00Z",
   },
-  {
-    id: "user_marcus",
-    name: "Marcus Brody",
-    email: "marcus.b@whitedavid23.com",
-    role: "support",
-    partnerId: "partner_001",
-    status: "active",
-    assignedLeadsCount: 0,
-    lastActive: "Yesterday",
-    createdAt: "2026-04-10T14:00:00Z",
-  },
 ];
 
 let localTeamStore: TeamMember[] = [...SEED_TEAM_MEMBERS];
 
+function mapBackendUserToTeamMember(raw: unknown): TeamMember {
+  const u = raw as {
+    id: string;
+    name: string;
+    email: string;
+    phone?: string | null;
+    role: string;
+    partnerId?: string | null;
+    status: string;
+    lastLoginAt?: string | Date | null;
+    createdAt?: string | Date;
+  };
+  return {
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    phone: u.phone ?? undefined,
+    role: mapBackendRole(u.role),
+    partnerId: u.partnerId ?? "",
+    status: u.status === "ACTIVE" ? "active" : "inactive",
+    lastActive: u.lastLoginAt ? new Date(u.lastLoginAt).toISOString() : undefined,
+    createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
+  };
+}
+
 export const teamService = {
   async getTeamMembers(partnerId?: string): Promise<TeamMember[]> {
     try {
-      const q = partnerId ? `?partnerId=${partnerId}` : "";
-      return await apiClient.get<TeamMember[]>(`/team${q}`);
+      const q = new URLSearchParams();
+      if (partnerId) q.set("partnerId", partnerId);
+      const qs = q.toString() ? `?${q.toString()}` : "";
+      const raw = await apiClient.getRawInstance().get(`/users${qs}`);
+      return normalizePaginatedResponse(raw.data, mapBackendUserToTeamMember).data;
     } catch (err: unknown) {
-      const normErr = err as NormalizedError;
-      if (normErr.code === "NETWORK_ERROR" || normErr.statusCode === 404) {
-        if (partnerId) {
-          return localTeamStore.filter((m) => m.partnerId === partnerId);
-        }
-        return [...localTeamStore];
-      }
-      throw err;
+      if (!shouldUseMockFallback(err)) throw err;
+      if (partnerId) return localTeamStore.filter((m) => m.partnerId === partnerId);
+      return [...localTeamStore];
     }
   },
 
-  async inviteTeamMember(payload: Omit<TeamMember, "id" | "assignedLeadsCount" | "lastActive" | "createdAt">): Promise<TeamMember> {
+  /** Invite via POST /users (returns temporaryPassword once). */
+  async inviteTeamMember(
+    payload: Omit<TeamMember, "id" | "assignedLeadsCount" | "lastActive" | "createdAt" | "temporaryPassword">
+  ): Promise<TeamMember> {
     try {
-      return await apiClient.post<TeamMember>("/team/invite", payload);
+      const res = await apiClient.getRawInstance().post<{
+        user: unknown;
+        temporaryPassword?: string;
+      }>("/users", {
+        name: payload.name,
+        email: payload.email,
+        phone: payload.phone ?? null,
+        role: mapFrontendRoleToBackend(payload.role),
+        partnerId: payload.partnerId || null,
+      });
+      const member = mapBackendUserToTeamMember(res.data.user ?? res.data);
+      return {
+        ...member,
+        temporaryPassword: res.data.temporaryPassword,
+      };
     } catch (err: unknown) {
-      const normErr = err as NormalizedError;
-      if (normErr.code === "NETWORK_ERROR" || normErr.statusCode === 404) {
-        const newMember: TeamMember = {
-          id: `user_${Date.now()}`,
-          ...payload,
-          assignedLeadsCount: 0,
-          lastActive: "Just invited",
-          createdAt: new Date().toISOString(),
-        };
-        localTeamStore = [newMember, ...localTeamStore];
-        return newMember;
-      }
-      throw err;
+      if (!shouldUseMockFallback(err)) throw err;
+      const newMember: TeamMember = {
+        id: `user_${Date.now()}`,
+        ...payload,
+        assignedLeadsCount: 0,
+        lastActive: "Just invited",
+        createdAt: new Date().toISOString(),
+        temporaryPassword: "MockTemp!Pass1",
+      };
+      localTeamStore = [newMember, ...localTeamStore];
+      return newMember;
     }
   },
 
+  /** Toggle via PATCH /users/:id/status { status: ACTIVE|SUSPENDED }. */
   async toggleUserStatus(userId: string): Promise<TeamMember> {
     try {
-      return await apiClient.patch<TeamMember>(`/team/${userId}/toggle-status`);
+      // Need current status — fetch then flip
+      const members = await this.getTeamMembers();
+      const current = members.find((m) => m.id === userId);
+      const nextStatus = current?.status === "active" ? "SUSPENDED" : "ACTIVE";
+      const res = await apiClient
+        .getRawInstance()
+        .patch<{ user: unknown }>(`/users/${userId}/status`, { status: nextStatus });
+      return mapBackendUserToTeamMember(res.data.user ?? res.data);
     } catch (err: unknown) {
-      const normErr = err as NormalizedError;
-      if (normErr.code === "NETWORK_ERROR" || normErr.statusCode === 404) {
-        const idx = localTeamStore.findIndex((u) => u.id === userId);
-        if (idx !== -1) {
-          localTeamStore[idx] = {
-            ...localTeamStore[idx],
-            status: localTeamStore[idx].status === "active" ? "inactive" : "active",
-          };
-          return localTeamStore[idx];
-        }
+      if (!shouldUseMockFallback(err)) throw err;
+      const idx = localTeamStore.findIndex((u) => u.id === userId);
+      if (idx !== -1) {
+        localTeamStore[idx] = {
+          ...localTeamStore[idx],
+          status: localTeamStore[idx].status === "active" ? "inactive" : "active",
+        };
+        return localTeamStore[idx];
       }
       throw err;
     }
@@ -221,6 +256,7 @@ export interface NotificationItem {
   title: string;
   message: string;
   read: boolean;
+  /** ISO timestamp from API; UI formats for display. */
   timestamp: string;
   linkHref?: string;
 }
@@ -230,43 +266,106 @@ const SEED_NOTIFICATIONS: NotificationItem[] = [
     id: "notif_1",
     type: "payout_update",
     title: "Payout Approved",
-    message: "Super Admin approved your payout request for $2,500. Batch #SET-882.",
+    message: "Super Admin approved your payout request for $2,500.",
     read: false,
-    timestamp: "25 minutes ago",
+    timestamp: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
     linkHref: "/commissions",
-  },
-  {
-    id: "notif_2",
-    type: "lead_alert",
-    title: "High-Priority Follow-up Due",
-    message: "Zainab Rashid follow-up call is scheduled for today 2:00 PM.",
-    read: false,
-    timestamp: "1 hour ago",
-    linkHref: "/leads/lead_003",
-  },
-  {
-    id: "notif_3",
-    type: "admission_confirmed",
-    title: "Admission Enrollment Confirmed",
-    message: "Hassan Tahir completed enrollment fee in Full Stack Engineering.",
-    read: true,
-    timestamp: "Yesterday",
-    linkHref: "/admissions",
   },
 ];
 
 let localNotificationsStore: NotificationItem[] = [...SEED_NOTIFICATIONS];
 
+/** Backend stores lowercase snake_case types via notify(); map to FE UI buckets. */
+function mapNotificationUiType(rawType?: string): NotificationItem["type"] {
+  const key = (rawType ?? "").toLowerCase();
+  switch (key) {
+    case "lead_assigned":
+    case "lead_status_changed":
+    case "followup_due":
+    case "followup_overdue":
+      return "lead_alert";
+    case "commission_approved":
+    case "commission_paid":
+    case "payment_received":
+      return "payout_update";
+    case "admission_created":
+    case "admission_verified":
+      return "admission_confirmed";
+    default:
+      return "system_alert";
+  }
+}
+
+function mapNotificationLink(
+  referenceType?: string | null,
+  referenceId?: string | null
+): string | undefined {
+  if (!referenceType || !referenceId) {
+    // List pages when we only know the entity family
+    if (referenceType === "commission") return "/commissions";
+    if (referenceType === "admission") return "/admissions";
+    if (referenceType === "partner") return "/partners";
+    return undefined;
+  }
+  switch (referenceType) {
+    case "lead":
+      return `/leads/${referenceId}`;
+    case "admission":
+      return "/admissions";
+    case "commission":
+      return "/commissions";
+    case "partner":
+      return "/partners";
+    default:
+      return undefined;
+  }
+}
+
+export function mapBackendNotification(raw: unknown): NotificationItem {
+  const n = raw as {
+    id: string;
+    type?: string;
+    title?: string;
+    body?: string;
+    message?: string;
+    isRead?: boolean;
+    readAt?: string | Date | null;
+    createdAt?: string | Date;
+    referenceType?: string | null;
+    referenceId?: string | null;
+  };
+  const createdAt = n.createdAt ? new Date(n.createdAt).toISOString() : "";
+  return {
+    id: n.id,
+    type: mapNotificationUiType(n.type),
+    title: n.title ?? "Notification",
+    message: n.message ?? n.body ?? "",
+    read: n.isRead === true || Boolean(n.readAt),
+    timestamp: createdAt,
+    linkHref: mapNotificationLink(n.referenceType, n.referenceId),
+  };
+}
+
 export const notificationService = {
   async getNotifications(): Promise<NotificationItem[]> {
     try {
-      return await apiClient.get<NotificationItem[]>("/notifications");
+      const raw = await apiClient.getRawInstance().get("/notifications?page=1&limit=50");
+      return normalizePaginatedResponse(raw.data, mapBackendNotification).data;
     } catch (err: unknown) {
-      const normErr = err as NormalizedError;
-      if (normErr.code === "NETWORK_ERROR" || normErr.statusCode === 404) {
-        return [...localNotificationsStore];
-      }
-      throw err;
+      if (!shouldUseMockFallback(err)) throw err;
+      return [...localNotificationsStore];
+    }
+  },
+
+  async getUnreadCount(): Promise<number> {
+    try {
+      const res = await apiClient
+        .getRawInstance()
+        .get<{ unreadCount?: number }>("/notifications/unread-count");
+      return Number(res.data?.unreadCount ?? 0);
+    } catch (err: unknown) {
+      if (!shouldUseMockFallback(err)) throw err;
+      return localNotificationsStore.filter((n) => !n.read).length;
     }
   },
 
@@ -274,15 +373,9 @@ export const notificationService = {
     try {
       await apiClient.patch(`/notifications/${id}/read`);
     } catch (err: unknown) {
-      const normErr = err as NormalizedError;
-      if (normErr.code === "NETWORK_ERROR" || normErr.statusCode === 404) {
-        const idx = localNotificationsStore.findIndex((n) => n.id === id);
-        if (idx !== -1) {
-          localNotificationsStore[idx].read = true;
-        }
-        return;
-      }
-      throw err;
+      if (!shouldUseMockFallback(err)) throw err;
+      const idx = localNotificationsStore.findIndex((n) => n.id === id);
+      if (idx !== -1) localNotificationsStore[idx].read = true;
     }
   },
 
@@ -290,12 +383,8 @@ export const notificationService = {
     try {
       await apiClient.patch("/notifications/read-all");
     } catch (err: unknown) {
-      const normErr = err as NormalizedError;
-      if (normErr.code === "NETWORK_ERROR" || normErr.statusCode === 404) {
-        localNotificationsStore = localNotificationsStore.map((n) => ({ ...n, read: true }));
-        return;
-      }
-      throw err;
+      if (!shouldUseMockFallback(err)) throw err;
+      localNotificationsStore = localNotificationsStore.map((n) => ({ ...n, read: true }));
     }
   },
 };
@@ -314,34 +403,95 @@ export interface ReportData {
 export const reportService = {
   async getReportsData(partnerId?: string): Promise<ReportData> {
     try {
+      // Use conversion + dashboard aggregates from backend reports module
       const q = partnerId ? `?partnerId=${partnerId}` : "";
-      return await apiClient.get<ReportData>(`/reports${q}`);
+      const [conversion, dashboard] = await Promise.all([
+        apiClient.getRawInstance().get(`/reports/conversion${q}`),
+        apiClient.getRawInstance().get(`/reports/dashboard${q}`),
+      ]);
+
+      const conv = conversion.data as {
+        totalLeads?: number;
+        totalAdmissions?: number;
+        conversionRate?: number;
+      };
+      const dash = dashboard.data as {
+        totalLeads?: number;
+        totalAdmissions?: number;
+        revenue?: number;
+      };
+
+      const totalInquiries = conv.totalLeads ?? dash.totalLeads ?? 0;
+      const totalAdmissions = conv.totalAdmissions ?? dash.totalAdmissions ?? 0;
+      const rate =
+        conv.conversionRate != null
+          ? `${(conv.conversionRate * (conv.conversionRate <= 1 ? 100 : 1)).toFixed(1)}%`
+          : totalInquiries
+            ? `${((totalAdmissions / totalInquiries) * 100).toFixed(1)}%`
+            : "0%";
+
+      return {
+        conversionRate: rate,
+        totalInquiries,
+        totalAdmissions,
+        grossTuitionVolume: Number(dash.revenue ?? 0),
+        averageDealCycleDays: 0,
+        intakeTrend: [],
+        sourceBreakdown: [],
+      };
     } catch (err: unknown) {
-      const normErr = err as NormalizedError;
-      if (normErr.code === "NETWORK_ERROR" || normErr.statusCode === 404) {
-        return {
-          conversionRate: "24.6%",
-          totalInquiries: 1248,
-          totalAdmissions: 120,
-          grossTuitionVolume: 5400000,
-          averageDealCycleDays: 8.4,
-          intakeTrend: [
-            { month: "May", leads: 180, admissions: 14 },
-            { month: "Jun", leads: 240, admissions: 22 },
-            { month: "Jul", leads: 310, admissions: 28 },
-            { month: "Aug", leads: 290, admissions: 26 },
-            { month: "Sep", leads: 228, admissions: 30 },
-          ],
-          sourceBreakdown: [
-            { source: "Website Ingestion", percentage: 42 },
-            { source: "Student Referral", percentage: 28 },
-            { source: "Campus Walk-in", percentage: 18 },
-            { source: "Social Ads", percentage: 12 },
-          ],
-        };
-      }
-      throw err;
+      if (!shouldUseMockFallback(err)) throw err;
+      return {
+        conversionRate: "24.6%",
+        totalInquiries: 1248,
+        totalAdmissions: 120,
+        grossTuitionVolume: 5400000,
+        averageDealCycleDays: 8.4,
+        intakeTrend: [
+          { month: "May", leads: 180, admissions: 14 },
+          { month: "Jun", leads: 240, admissions: 22 },
+          { month: "Jul", leads: 310, admissions: 28 },
+        ],
+        sourceBreakdown: [
+          { source: "Website Ingestion", percentage: 42 },
+          { source: "Student Referral", percentage: 28 },
+        ],
+      };
     }
+  },
+
+  /**
+   * Download CSV via GET /reports/export?report=leads|admissions
+   * Scope is enforced server-side (SA = all, PA = own partner).
+   */
+  async exportCsv(
+    report: "leads" | "admissions",
+    opts: { from?: string; to?: string } = {}
+  ): Promise<{ filename: string }> {
+    const q = new URLSearchParams();
+    q.set("report", report);
+    if (opts.from) q.set("from", opts.from);
+    if (opts.to) q.set("to", opts.to);
+
+    const res = await apiClient.getRawInstance().get(`/reports/export?${q.toString()}`, {
+      responseType: "blob",
+    });
+
+    const disposition = String(res.headers?.["content-disposition"] ?? "");
+    const match = /filename="?([^"]+)"?/i.exec(disposition);
+    const filename = match?.[1] ?? `${report}-export.csv`;
+
+    const blob = new Blob([res.data], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+
+    return { filename };
   },
 };
 
@@ -368,53 +518,51 @@ const SEED_AUDIT_LOGS: AuditLogEntry[] = [
     ipAddress: "192.168.1.42",
     status: "success",
     timestamp: "2026-09-15T14:22:10Z",
-    details: "Approved payout of $5,500 to Apex Academy (partner_001).",
-  },
-  {
-    id: "audit_2",
-    actor: "Sarah Connor (Counselor)",
-    action: "lead:create",
-    entity: "Lead",
-    entityId: "lead_001",
-    ipAddress: "192.168.2.115",
-    status: "success",
-    timestamp: "2026-09-15T12:05:32Z",
-    details: "Ingested new lead Aarav Sharma with priority 'high'.",
-  },
-  {
-    id: "audit_3",
-    actor: "System Webhook",
-    action: "lead:duplicate_check",
-    entity: "Lead",
-    entityId: "lead_dup_temp",
-    ipAddress: "10.0.4.12",
-    status: "warning",
-    timestamp: "2026-09-14T18:40:02Z",
-    details: "Rejected duplicate phone submission (+91 98765 43210) for tenant partner_001.",
-  },
-  {
-    id: "audit_4",
-    actor: "Alex Vance (Super Admin)",
-    action: "partner:approve",
-    entity: "Partner",
-    entityId: "partner_001",
-    ipAddress: "192.168.1.42",
-    status: "success",
-    timestamp: "2026-09-10T09:15:00Z",
-    details: "Activated partner tenant Apex Academy.",
+    details: "Approved payout of $5,500 to Apex Academy.",
   },
 ];
+
+function mapBackendAuditLog(raw: unknown): AuditLogEntry {
+  const a = raw as {
+    id: string;
+    userId?: string | null;
+    action: string;
+    entityType?: string;
+    entityId?: string | null;
+    ipAddress?: string | null;
+    oldValue?: unknown;
+    newValue?: unknown;
+    metadata?: unknown;
+    createdAt?: string | Date;
+  };
+  const detailsPayload = a.newValue ?? a.oldValue ?? a.metadata ?? {};
+  return {
+    id: a.id,
+    actor: a.userId ?? "system",
+    action: a.action,
+    entity: a.entityType ?? "Unknown",
+    entityId: a.entityId ?? "",
+    ipAddress: a.ipAddress ?? "",
+    status: "success",
+    timestamp: a.createdAt ? new Date(a.createdAt).toISOString() : "",
+    details:
+      typeof detailsPayload === "string"
+        ? detailsPayload
+        : JSON.stringify(detailsPayload),
+  };
+}
 
 export const auditService = {
   async getAuditLogs(): Promise<AuditLogEntry[]> {
     try {
-      return await apiClient.get<AuditLogEntry[]>("/audit");
+      const raw = await apiClient.getRawInstance().get("/audit-logs");
+      return normalizePaginatedResponse(raw.data, mapBackendAuditLog).data;
     } catch (err: unknown) {
-      const normErr = err as NormalizedError;
-      if (normErr.code === "NETWORK_ERROR" || normErr.statusCode === 404) {
-        return [...SEED_AUDIT_LOGS];
-      }
-      throw err;
+      if (!shouldUseMockFallback(err)) throw err;
+      return [...SEED_AUDIT_LOGS];
     }
   },
 };
+
+// Re-export permissions helper for callers that previously imported from auth mocks
+export { ROLE_PERMISSIONS };

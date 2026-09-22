@@ -20,6 +20,21 @@ interface NotificationCenterProps {
   onClose: () => void;
 }
 
+/** Compact relative time for drawer rows (no date-fns dependency). */
+function formatRelativeTime(iso: string): string {
+  const ms = Date.parse(iso);
+  if (!Number.isFinite(ms)) return "";
+  const sec = Math.max(0, Math.round((Date.now() - ms) / 1000));
+  if (sec < 45) return "just now";
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.round(hr / 24);
+  if (day < 14) return `${day}d ago`;
+  return new Date(ms).toLocaleDateString();
+}
+
 export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps) {
   const queryClient = useQueryClient();
 
@@ -29,17 +44,22 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
     enabled: isOpen,
   });
 
+  const invalidateNotificationQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+  };
+
   const markReadMutation = useMutation({
     mutationFn: (id: string) => notificationService.markAsRead(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      invalidateNotificationQueries();
     },
   });
 
   const markAllMutation = useMutation({
     mutationFn: () => notificationService.markAllAsRead(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      invalidateNotificationQueries();
     },
   });
 
@@ -61,11 +81,7 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex justify-end"
-    >
+    <div role="dialog" aria-modal="true" aria-label="Notifications" className="fixed inset-0 z-50 flex justify-end">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-slate-950/30 backdrop-blur-xs transition-opacity"
@@ -91,7 +107,8 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
               <button
                 type="button"
                 onClick={() => markAllMutation.mutate()}
-                className="text-[11px] font-semibold text-blue-600 hover:underline flex items-center gap-1"
+                disabled={markAllMutation.isPending}
+                className="text-[11px] font-semibold text-blue-600 hover:underline flex items-center gap-1 disabled:opacity-50"
                 title="Mark all as read"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
@@ -102,6 +119,7 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
               type="button"
               onClick={onClose}
               className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              aria-label="Close notifications"
             >
               <X className="w-4 h-4" />
             </button>
@@ -113,15 +131,23 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
           {isLoading ? (
             <div className="p-8 text-center text-xs text-slate-400">Loading alerts...</div>
           ) : notifications.length === 0 ? (
-            <div className="p-8 text-center text-xs text-slate-400">No notifications</div>
+            <div className="p-8 text-center text-xs text-slate-400">No notifications yet</div>
           ) : (
             notifications.map((item) => (
               <div
                 key={item.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => {
                   if (!item.read) markReadMutation.mutate(item.id);
                 }}
-                className={`p-3 rounded-xl border text-xs transition-all relative ${
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    if (!item.read) markReadMutation.mutate(item.id);
+                  }
+                }}
+                className={`p-3 rounded-xl border text-xs transition-all relative cursor-pointer ${
                   item.read
                     ? "bg-white border-slate-200/60 opacity-80"
                     : "bg-blue-50/40 border-blue-200/80 shadow-2xs"
@@ -134,13 +160,19 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <span className="font-bold text-slate-900 truncate">{item.title}</span>
-                      <span className="text-[10px] text-slate-400 shrink-0">{item.timestamp}</span>
+                      <span className="text-[10px] text-slate-400 shrink-0">
+                        {formatRelativeTime(item.timestamp)}
+                      </span>
                     </div>
                     <p className="text-slate-600 mt-0.5 leading-relaxed">{item.message}</p>
                     {item.linkHref && (
                       <Link
                         href={item.linkHref}
-                        onClick={onClose}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!item.read) markReadMutation.mutate(item.id);
+                          onClose();
+                        }}
                         className="text-[11px] font-semibold text-blue-600 hover:underline inline-flex items-center gap-1 mt-1.5"
                       >
                         <span>View Details</span>
@@ -148,6 +180,9 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
                       </Link>
                     )}
                   </div>
+                  {!item.read && (
+                    <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1.5" aria-hidden />
+                  )}
                 </div>
               </div>
             ))
