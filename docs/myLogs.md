@@ -483,6 +483,7 @@
 - **Local Ports**: Backend `:4000`, Frontend `:3000`, PostgreSQL `:5432`
 - **Status**: **Local full-stack integration complete** — Phase 1 + Phase 2 FE surfaces wired live (courses, marketing, notifications, commission rules); role workflows verified against the backend
 - **Git note (23 Sep 2026)**: Frontend un-nested into monorepo on `dev_Sohaim` (nested `frontend/.git` removed). Prior FE work also pushed on `sajid/frontend-phase-1` (`3ecef0b`). Prefer committing FE on `dev_Sohaim` going forward.
+- **PR**: https://github.com/Sajid0875/admission-hub/pull/2 (`dev_Sohaim` → `main`)
 
 ### Local QA Login Credentials (from `npm run prisma:seed`)
 
