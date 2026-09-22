@@ -4,7 +4,8 @@
  * Responsibilities:
  *   - Verify credentials (email + password) against the User table
  *   - Enforce account status (must be ACTIVE)
- *   - Issue JWT access tokens
+ *   - Issue JWT access tokens + opaque refresh tokens
+ *   - Rotate / revoke refresh tokens
  *   - Return a safe user shape (never the password hash)
  *   - Update lastLoginAt
  *
@@ -18,7 +19,14 @@ import {
     UnauthorizedError,
     ForbiddenError,
 } from '../../shared/errors/AppError.js';
-import { signAccessToken } from '../../shared/utils/jwt.js';
+import {
+    signAccessToken,
+    refreshTokenExpiresAt,
+} from '../../shared/utils/jwt.js';
+import {
+    generateRefreshToken,
+    hashRefreshToken,
+} from '../../shared/utils/refreshToken.js';
 import type { LoginInput } from './auth.schema.js';
 
 // --------------------------------------------------
@@ -37,9 +45,17 @@ export interface SafeUser {
     createdAt: Date;
 }
 
-export interface LoginResult {
+export interface AuthTokensResult {
     token: string;
+    refreshToken: string;
     user: SafeUser;
+}
+
+export interface LoginResult extends AuthTokensResult {}
+
+export interface RefreshResult {
+    token: string;
+    refreshToken: string;
 }
 
 // --------------------------------------------------
@@ -67,6 +83,30 @@ const toSafeUser = (user: {
     lastLoginAt: user.lastLoginAt,
     createdAt: user.createdAt,
 });
+
+/** Persist a new refresh token row; returns the raw token for the client. */
+const issueRefreshToken = async (userId: string): Promise<string> => {
+    const raw = generateRefreshToken();
+    await prisma.refreshToken.create({
+        data: {
+            userId,
+            token: hashRefreshToken(raw),
+            expiresAt: refreshTokenExpiresAt(),
+        },
+    });
+    return raw;
+};
+
+const issueAccessTokenForUser = (user: {
+    id: string;
+    partnerId: string | null;
+    role: { name: string };
+}): string =>
+    signAccessToken({
+        userId: user.id,
+        role: user.role.name,
+        partnerId: user.partnerId,
+    });
 
 // --------------------------------------------------
 // Public API
@@ -112,16 +152,57 @@ export const login = async (input: LoginInput): Promise<LoginResult> => {
             logger.warn({ err, userId: user.id }, 'failed to update lastLoginAt');
         });
 
-    const token = signAccessToken({
-        userId: user.id,
-        role: user.role.name,
-        partnerId: user.partnerId,
-    });
+    const token = issueAccessTokenForUser(user);
+    const refreshToken = await issueRefreshToken(user.id);
 
     return {
         token,
+        refreshToken,
         user: toSafeUser(user),
     };
+};
+
+/**
+ * Exchange a valid refresh token for a new access + refresh pair (rotation).
+ * Old refresh row is deleted so stolen tokens cannot be reused after rotation.
+ */
+export const refresh = async (rawRefreshToken: string): Promise<RefreshResult> => {
+    const tokenHash = hashRefreshToken(rawRefreshToken);
+
+    const stored = await prisma.refreshToken.findUnique({
+        where: { token: tokenHash },
+        include: { user: { include: { role: true } } },
+    });
+
+    if (!stored) {
+        throw UnauthorizedError('Invalid refresh token');
+    }
+
+    // Always delete the presented token (one-time use / rotation hygiene)
+    await prisma.refreshToken.delete({ where: { id: stored.id } }).catch(() => {
+        // Already deleted by a concurrent refresh — treat as invalid
+    });
+
+    if (stored.expiresAt.getTime() <= Date.now()) {
+        throw UnauthorizedError('Refresh token expired');
+    }
+
+    if (stored.user.status !== 'ACTIVE') {
+        throw ForbiddenError('Account is not active');
+    }
+
+    const token = issueAccessTokenForUser(stored.user);
+    const refreshToken = await issueRefreshToken(stored.user.id);
+
+    return { token, refreshToken };
+};
+
+/**
+ * Revoke a refresh token (logout). Idempotent — unknown tokens succeed.
+ */
+export const logout = async (rawRefreshToken: string): Promise<void> => {
+    const tokenHash = hashRefreshToken(rawRefreshToken);
+    await prisma.refreshToken.deleteMany({ where: { token: tokenHash } });
 };
 
 export const getCurrentUser = async (userId: string): Promise<SafeUser> => {

@@ -1,17 +1,23 @@
 import { create } from "zustand";
 import type { AuthUser, Permission, UserRole } from "@/types/auth";
 
+const ACCESS_KEY = "auth_token";
+const REFRESH_KEY = "auth_refresh_token";
+const USER_KEY = "auth_user";
+
 interface AuthState {
   user: AuthUser | null;
   token: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   isInitialized: boolean;
 
   // Actions
-  setAuth: (user: AuthUser, token: string) => void;
+  setAuth: (user: AuthUser, token: string, refreshToken?: string | null) => void;
   setUser: (user: AuthUser | null) => void;
   setToken: (token: string | null) => void;
+  setTokens: (token: string, refreshToken: string) => void;
   initAuthFromStorage: () => void;
   logout: () => void;
 
@@ -27,6 +33,7 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: null,
+  refreshToken: null,
   isAuthenticated: false,
   isLoading: false,
   isInitialized: false,
@@ -35,14 +42,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (typeof window === "undefined") return;
 
     try {
-      const storedToken = localStorage.getItem("auth_token");
-      const storedUserJson = localStorage.getItem("auth_user");
+      const storedToken = localStorage.getItem(ACCESS_KEY);
+      const storedRefresh = localStorage.getItem(REFRESH_KEY);
+      const storedUserJson = localStorage.getItem(USER_KEY);
 
       if (storedToken && storedUserJson) {
         const parsedUser = JSON.parse(storedUserJson) as AuthUser;
         set({
           user: parsedUser,
           token: storedToken,
+          refreshToken: storedRefresh,
           isAuthenticated: true,
           isInitialized: true,
         });
@@ -50,26 +59,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     } catch {
       // Invalid JSON or corrupted storage
-      localStorage.removeItem("auth_token");
-      localStorage.removeItem("auth_user");
+      localStorage.removeItem(ACCESS_KEY);
+      localStorage.removeItem(REFRESH_KEY);
+      localStorage.removeItem(USER_KEY);
     }
 
     set({
       user: null,
       token: null,
+      refreshToken: null,
       isAuthenticated: false,
       isInitialized: true,
     });
   },
 
-  setAuth: (user: AuthUser, token: string) => {
+  setAuth: (user: AuthUser, token: string, refreshToken?: string | null) => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("auth_token", token);
-      localStorage.setItem("auth_user", JSON.stringify(user));
+      localStorage.setItem(ACCESS_KEY, token);
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      if (refreshToken) {
+        localStorage.setItem(REFRESH_KEY, refreshToken);
+      } else {
+        localStorage.removeItem(REFRESH_KEY);
+      }
     }
     set({
       user,
       token,
+      refreshToken: refreshToken ?? null,
       isAuthenticated: true,
       isLoading: false,
       isInitialized: true,
@@ -79,9 +96,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setUser: (user: AuthUser | null) => {
     if (typeof window !== "undefined") {
       if (user) {
-        localStorage.setItem("auth_user", JSON.stringify(user));
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
       } else {
-        localStorage.removeItem("auth_user");
+        localStorage.removeItem(USER_KEY);
       }
     }
     set({
@@ -93,9 +110,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setToken: (token: string | null) => {
     if (typeof window !== "undefined") {
       if (token) {
-        localStorage.setItem("auth_token", token);
+        localStorage.setItem(ACCESS_KEY, token);
       } else {
-        localStorage.removeItem("auth_token");
+        localStorage.removeItem(ACCESS_KEY);
       }
     }
     set({
@@ -104,14 +121,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 
+  setTokens: (token: string, refreshToken: string) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(ACCESS_KEY, token);
+      localStorage.setItem(REFRESH_KEY, refreshToken);
+    }
+    set({
+      token,
+      refreshToken,
+      isAuthenticated: !!token && !!get().user,
+    });
+  },
+
   logout: () => {
     if (typeof window !== "undefined") {
-      localStorage.removeItem("auth_token");
-      localStorage.removeItem("auth_user");
+      localStorage.removeItem(ACCESS_KEY);
+      localStorage.removeItem(REFRESH_KEY);
+      localStorage.removeItem(USER_KEY);
     }
     set({
       user: null,
       token: null,
+      refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
       isInitialized: true,

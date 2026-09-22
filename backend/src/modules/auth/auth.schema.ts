@@ -20,3 +20,12 @@ export const LoginSchema = z.object({
 });
 
 export type LoginInput = z.infer<typeof LoginSchema>;
+
+export const RefreshTokenBodySchema = z.object({
+    refreshToken: z
+        .string()
+        .min(1, 'refreshToken is required')
+        .max(512, 'refreshToken too long'),
+});
+
+export type RefreshTokenBody = z.infer<typeof RefreshTokenBodySchema>;

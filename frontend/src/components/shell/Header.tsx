@@ -15,7 +15,7 @@ import {
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useUIStore } from "@/stores/useUIStore";
 import type { UserRole } from "@/types/auth";
-import { MOCK_ROLE_PROFILES } from "@/services/api/authService";
+import { MOCK_ROLE_PROFILES, authService } from "@/services/api/authService";
 import { notificationService } from "@/services/api/adminService";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 
@@ -61,15 +61,17 @@ export function Header({
   }, []);
 
   const handleSignOut = () => {
-    logout();
-    addToast({
-      type: "info",
-      title: "Signed Out",
-      message: "You have been signed out of the partner portal.",
+    void authService.logout().finally(() => {
+      logout();
+      addToast({
+        type: "info",
+        title: "Signed Out",
+        message: "You have been signed out of the partner portal.",
+      });
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
     });
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
-    }
   };
 
   // Quick switch role for testing / demoing different portal perspectives

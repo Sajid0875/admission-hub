@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { X, LogOut, Shield } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { authService } from "@/services/api/authService";
 import { getAuthorizedNavItems } from "./navigationConfig";
 
 interface MobileNavigationProps {
@@ -24,10 +25,12 @@ export function MobileNavigation({ isOpen, onClose }: MobileNavigationProps) {
 
   const handleSignOut = () => {
     onClose();
-    logout();
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
-    }
+    void authService.logout().finally(() => {
+      logout();
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+    });
   };
 
   return (

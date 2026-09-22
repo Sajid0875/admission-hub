@@ -57,12 +57,19 @@ const api = async (
     return { status: res.status, json, text, headers: res.headers };
 };
 
-const login = async (email: string, password: string): Promise<string> => {
+const login = async (
+    email: string,
+    password: string,
+): Promise<{ token: string; refreshToken: string }> => {
     const { status, json } = await api('POST', '/auth/login', undefined, { email, password });
-    if (status !== 200 || typeof json.token !== 'string') {
+    if (
+        status !== 200 ||
+        typeof json.token !== 'string' ||
+        typeof json.refreshToken !== 'string'
+    ) {
         throw new Error(`login failed for ${email}: ${status} ${JSON.stringify(json)}`);
     }
-    return json.token;
+    return { token: json.token, refreshToken: json.refreshToken };
 };
 
 const uniquePhone = (): string =>
@@ -79,12 +86,38 @@ async function main(): Promise<void> {
     assert(health.status === 200, 'GET /health → 200');
 
     // --- Auth: all roles ---
-    console.log('\n[1] Auth — all role logins');
-    const sa = await login(ACCOUNTS.sa.email, ACCOUNTS.sa.password);
-    const pa = await login(ACCOUNTS.pa.email, ACCOUNTS.pa.password);
-    const co = await login(ACCOUNTS.co.email, ACCOUNTS.co.password);
-    const su = await login(ACCOUNTS.su.email, ACCOUNTS.su.password);
+    console.log('\n[1] Auth — all role logins + refresh');
+    const saLogin = await login(ACCOUNTS.sa.email, ACCOUNTS.sa.password);
+    const paLogin = await login(ACCOUNTS.pa.email, ACCOUNTS.pa.password);
+    const coLogin = await login(ACCOUNTS.co.email, ACCOUNTS.co.password);
+    const suLogin = await login(ACCOUNTS.su.email, ACCOUNTS.su.password);
+    const sa = saLogin.token;
+    const pa = paLogin.token;
+    const co = coLogin.token;
+    const su = suLogin.token;
     assert(!!sa && !!pa && !!co && !!su, 'SA / PA / Counselor / Support login');
+    assert(!!saLogin.refreshToken, 'login returns refreshToken');
+
+    const refreshed = await api('POST', '/auth/refresh', undefined, {
+        refreshToken: saLogin.refreshToken,
+    });
+    assert(refreshed.status === 200, 'POST /auth/refresh → 200');
+    assert(typeof refreshed.json.token === 'string', 'refresh returns access token');
+    assert(
+        typeof refreshed.json.refreshToken === 'string' &&
+            refreshed.json.refreshToken !== saLogin.refreshToken,
+        'refresh rotates refreshToken',
+    );
+
+    const reuseOld = await api('POST', '/auth/refresh', undefined, {
+        refreshToken: saLogin.refreshToken,
+    });
+    assert(reuseOld.status === 401, 'old refresh token rejected after rotation');
+
+    const logoutRes = await api('POST', '/auth/logout', undefined, {
+        refreshToken: refreshed.json.refreshToken as string,
+    });
+    assert(logoutRes.status === 204, 'POST /auth/logout → 204');
 
     const saMe = await api('GET', '/auth/me', sa);
     const paMe = await api('GET', '/auth/me', pa);

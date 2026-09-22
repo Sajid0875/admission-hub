@@ -10,7 +10,7 @@
  */
 
 import type { Request, Response } from 'express';
-import { LoginSchema } from './auth.schema.js';
+import { LoginSchema, RefreshTokenBodySchema } from './auth.schema.js';
 import * as authService from './auth.service.js';
 import { UnauthorizedError } from '../../shared/errors/AppError.js';
 
@@ -28,8 +28,40 @@ export const loginHandler = async (
 
     res.status(200).json({
         token: result.token,
+        refreshToken: result.refreshToken,
         user: result.user,
     });
+};
+
+// --------------------------------------------------
+// POST /api/v1/auth/refresh
+// --------------------------------------------------
+
+export const refreshHandler = async (
+    req: Request,
+    res: Response,
+): Promise<void> => {
+    const input = RefreshTokenBodySchema.parse(req.body);
+    const result = await authService.refresh(input.refreshToken);
+
+    res.status(200).json({
+        token: result.token,
+        refreshToken: result.refreshToken,
+    });
+};
+
+// --------------------------------------------------
+// POST /api/v1/auth/logout
+// --------------------------------------------------
+
+export const logoutHandler = async (
+    req: Request,
+    res: Response,
+): Promise<void> => {
+    const input = RefreshTokenBodySchema.parse(req.body);
+    await authService.logout(input.refreshToken);
+
+    res.status(204).send();
 };
 
 // --------------------------------------------------

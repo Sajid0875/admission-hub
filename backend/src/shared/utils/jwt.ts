@@ -14,8 +14,8 @@ import { UnauthorizedError } from '../errors/AppError.js';
  * Keep it small — it travels on every request.
  */
 export interface AccessTokenPayload extends JwtPayload {
-    sub: string;           // user id
-    role: string;          // RoleName
+    sub: string; // user id
+    role: string; // RoleName
     partnerId: string | null;
 }
 
@@ -63,4 +63,39 @@ export const verifyAccessToken = (token: string): AccessTokenPayload => {
         }
         throw err;
     }
+};
+
+/**
+ * Parse durations like "15m", "7d", "30d" into milliseconds.
+ * Used for refresh-token DB expiry (not JWT library).
+ */
+export const parseDurationToMs = (raw: string): number => {
+    const trimmed = raw.trim();
+    const match = /^(\d+)(ms|s|m|h|d)$/i.exec(trimmed);
+    if (!match?.[1] || !match[2]) {
+        throw new Error(`Invalid duration: ${raw}`);
+    }
+
+    const amount = Number(match[1]);
+    const unit = match[2].toLowerCase();
+
+    switch (unit) {
+        case 'ms':
+            return amount;
+        case 's':
+            return amount * 1000;
+        case 'm':
+            return amount * 60_000;
+        case 'h':
+            return amount * 3_600_000;
+        case 'd':
+            return amount * 86_400_000;
+        default:
+            throw new Error(`Unhandled duration unit: ${unit}`);
+    }
+};
+
+export const refreshTokenExpiresAt = (): Date => {
+    const ms = parseDurationToMs(env.JWT_REFRESH_EXPIRES_IN);
+    return new Date(Date.now() + ms);
 };

@@ -135,9 +135,9 @@ export const authService = {
     }
 
     try {
-      // Raw axios so we receive { token, user } without assuming { success, data }
       const res = await apiClient.getRawInstance().post<{
         token: string;
+        refreshToken?: string;
         user: BackendSafeUser;
       }>("/auth/login", {
         email: credentials.email.trim(),
@@ -146,17 +146,60 @@ export const authService = {
 
       return {
         token: res.data.token,
+        refreshToken: res.data.refreshToken,
         user: mapBackendUserToAuthUser(res.data.user),
-        expiresIn: 3600 * 24 * 7,
+        expiresIn: 60 * 15,
       };
     } catch (err) {
       throw normalizeApiError(err);
     }
   },
 
-  /** Local logout — backend has no logout/refresh-token revoke endpoint yet. */
-  async logout(): Promise<void> {
-    return;
+  /**
+   * Exchange refresh token for a new access + refresh pair.
+   * Used by the axios interceptor on 401 before forcing re-login.
+   */
+  async refresh(refreshToken: string): Promise<{ token: string; refreshToken: string }> {
+    if (areMocksEnabled()) {
+      return {
+        token: `jwt_mock_refreshed_${Date.now()}`,
+        refreshToken: `refresh_mock_${Date.now()}`,
+      };
+    }
+
+    try {
+      const res = await apiClient.getRawInstance().post<{
+        token: string;
+        refreshToken: string;
+      }>("/auth/refresh", { refreshToken });
+      return {
+        token: res.data.token,
+        refreshToken: res.data.refreshToken,
+      };
+    } catch (err) {
+      throw normalizeApiError(err);
+    }
+  },
+
+  /** Revoke refresh token server-side, then clear local session. */
+  async logout(refreshToken?: string | null): Promise<void> {
+    if (areMocksEnabled()) {
+      return;
+    }
+
+    const token =
+      refreshToken ??
+      (typeof window !== "undefined"
+        ? localStorage.getItem("auth_refresh_token")
+        : null);
+
+    if (!token) return;
+
+    try {
+      await apiClient.getRawInstance().post("/auth/logout", { refreshToken: token });
+    } catch {
+      // Best-effort revoke — local clear still happens in the store
+    }
   },
 
   /**

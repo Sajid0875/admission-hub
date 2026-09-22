@@ -780,3 +780,4 @@ Phase-2 FE polish (courses, marketing, notifications, commission rules): **23 Se
 PR #2 merged to `main`; hardening (CI, rate limits, OpenAPI) + Phase-3 reminders/WhatsApp stub: **23 Sep 2026**.  
 `GET /commissions/summary` API + FE live wiring; OpenAPI JSON comment fix (tsx): **23 Sep 2026**.
 Live E2E script + Docker Compose local stack: **23 Sep 2026**.
+Refresh tokens (login issues hashed refresh; `/auth/refresh` rotation; `/auth/logout` revoke; FE silent refresh): **23 Sep 2026**.
