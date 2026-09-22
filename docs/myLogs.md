@@ -787,6 +787,7 @@ PR #8 merged to `main` (OpenAPI deepen): **23 Sep 2026**.
 PDF export for leads/admissions (`format=pdf` on `/reports/export`): **23 Sep 2026**.
 PR #9 merged to `main` (PDF export): **23 Sep 2026**.
 WhatsApp Meta Cloud API adapter (env-selected; stub default): **23 Sep 2026**.
+PR #10 merged to `main` (WhatsApp Meta provider): **23 Sep 2026**.
 
 ---
 
@@ -813,9 +814,10 @@ WhatsApp Meta Cloud API adapter (env-selected; stub default): **23 Sep 2026**.
 - OpenAPI export docs updated for `format` + `application/pdf`
 - Commit: `dde77e4` → merged via PR #9
 
-### WhatsApp Meta provider (this commit → PR)
+### WhatsApp Meta provider (PR #10 merged)
 - `WHATSAPP_PROVIDER=stub|meta` — Meta Cloud API via native `fetch` (no new deps)
 - Env: `WHATSAPP_META_ACCESS_TOKEN`, `WHATSAPP_META_PHONE_NUMBER_ID`, `WHATSAPP_META_API_VERSION`
 - Missing Meta creds → warn + stub fallback; disabled → skipped
-- Phone normalize to digits; unit tests for phone + Meta adapter (mocked fetch)
+- Phone normalize to digits; unit tests for phone + Meta adapter (mocked fetch) **7/7**
 - Follow-up reminder job already calls `whatsapp.sendText` — picks up live adapter automatically
+- Commit: `0ea5490` → merged via PR #10
