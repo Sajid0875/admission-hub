@@ -88,6 +88,27 @@ export default function AdmissionsPage() {
     },
   });
 
+  const gatewayPayMutation = useMutation({
+    mutationFn: (admissionId: string) =>
+      admissionService.collectViaGateway(admissionId),
+    onSuccess: ({ admission }) => {
+      queryClient.invalidateQueries({ queryKey: ["admissions"] });
+      setSelectedAdmission(admission);
+      addToast({
+        type: "success",
+        title: "Gateway payment recorded",
+        message: `${admission.studentName}: ₹${admission.amountPaid.toLocaleString()} paid of ₹${admission.fee.toLocaleString()}.`,
+      });
+    },
+    onError: (err: unknown) => {
+      addToast({
+        type: "error",
+        title: "Gateway payment failed",
+        message: (err as { message?: string })?.message || "Could not collect payment.",
+      });
+    },
+  });
+
   const getStatusBadge = (status: PaymentStatus) => {
     switch (status) {
       case "full":
@@ -359,7 +380,7 @@ export default function AdmissionsPage() {
           description={`Admission Record: ${selectedAdmission.studentId || selectedAdmission.id}`}
           size="md"
           footer={
-            <div className="flex items-center justify-between w-full">
+            <div className="flex items-center justify-between w-full gap-2 flex-wrap">
               {selectedAdmission.leadId ? (
                 <Link href={`/leads/${selectedAdmission.leadId}`}>
                   <Button variant="outline" size="sm" leftIcon={<ExternalLink className="w-3.5 h-3.5" />}>
@@ -367,9 +388,22 @@ export default function AdmissionsPage() {
                   </Button>
                 </Link>
               ) : <div />}
-              <Button variant="primary" size="sm" onClick={() => setSelectedAdmission(null)}>
-                Close
-              </Button>
+              <div className="flex items-center gap-2">
+                {canVerify && selectedAdmission.amountPaid < selectedAdmission.fee && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    leftIcon={<CreditCard className="w-3.5 h-3.5" />}
+                    disabled={gatewayPayMutation.isPending}
+                    onClick={() => gatewayPayMutation.mutate(selectedAdmission.id)}
+                  >
+                    {gatewayPayMutation.isPending ? "Collecting…" : "Pay remaining (gateway)"}
+                  </Button>
+                )}
+                <Button variant="primary" size="sm" onClick={() => setSelectedAdmission(null)}>
+                  Close
+                </Button>
+              </div>
             </div>
           }
         >

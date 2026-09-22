@@ -3,7 +3,14 @@
  */
 
 export type PaymentStatus = "pending" | "partial" | "full" | "refunded" | "cancelled";
-export type PaymentMode = "cash" | "upi" | "bank_transfer" | "card" | "cheque" | "online";
+export type PaymentMode =
+  | "cash"
+  | "upi"
+  | "bank_transfer"
+  | "card"
+  | "cheque"
+  | "online"
+  | "gateway";
 export type VerificationStatus = "pending" | "verified" | "rejected";
 
 export interface AdmissionDocument {

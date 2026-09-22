@@ -3,7 +3,7 @@
   "info": {
     "title": "Admission Hub API",
     "description": "Multi-tenant partner admissions CRM backend (Express + Prisma). Access JWTs are short-lived; use POST /api/v1/auth/refresh to rotate opaque refresh tokens. Most routes require Bearer auth and enforce role + tenant scope in services.",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   "servers": [
     {
@@ -1872,6 +1872,130 @@
             }
           }
         ]
+      }
+    },
+    "/api/v1/admissions/{id}/payments/initiate": {
+      "post": {
+        "tags": [
+          "Admissions"
+        ],
+        "summary": "Initiate gateway checkout for remaining (or partial) fee",
+        "description": "Creates a payment order via the configured gateway (stub or Razorpay). Returns orderId, intentToken, and keyId for client checkout.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "number",
+                    "description": "Optional; defaults to remaining balance"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Gateway order created"
+          },
+          "400": {
+            "description": "Already paid or amount exceeds remaining"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/admissions/{id}/payments/confirm": {
+      "post": {
+        "tags": [
+          "Admissions"
+        ],
+        "summary": "Confirm gateway payment and record ledger entry",
+        "description": "Verifies stub intent or Razorpay HMAC, then appends a GATEWAY payment (idempotent on paymentId).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "orderId",
+                  "paymentId",
+                  "intentToken"
+                ],
+                "properties": {
+                  "orderId": {
+                    "type": "string"
+                  },
+                  "paymentId": {
+                    "type": "string"
+                  },
+                  "intentToken": {
+                    "type": "string"
+                  },
+                  "signature": {
+                    "type": "string",
+                    "description": "Required for Razorpay"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payment recorded"
+          },
+          "400": {
+            "description": "Verification failed"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
       }
     },
     "/api/v1/admissions/{id}/payments/{paymentId}/refund": {

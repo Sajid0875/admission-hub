@@ -19,6 +19,8 @@ import {
     VerifyAdmissionSchema,
     CancelAdmissionSchema,
     RecordPaymentSchema,
+    ConfirmGatewayPaymentSchema,
+    InitiateGatewayPaymentSchema,
     RefundPaymentSchema,
     ListAdmissionsQuerySchema,
     ListPaymentsQuerySchema,
@@ -186,6 +188,48 @@ export const recordPaymentHandler = async (
     const input = RecordPaymentSchema.parse(req.body);
 
     const result = await admissionService.recordPayment(
+        actor,
+        id as string,
+        input,
+    );
+
+    res.status(201).json(result);
+};
+
+// --------------------------------------------------
+// POST /api/v1/admissions/:id/payments/initiate
+// --------------------------------------------------
+
+export const initiateGatewayPaymentHandler = async (
+    req: Request,
+    res: Response,
+): Promise<void> => {
+    const actor = requireActor(req);
+    const { id } = req.params;
+    const input = InitiateGatewayPaymentSchema.parse(req.body ?? {});
+
+    const order = await admissionService.initiateGatewayPayment(
+        actor,
+        id as string,
+        input,
+    );
+
+    res.status(201).json({ order });
+};
+
+// --------------------------------------------------
+// POST /api/v1/admissions/:id/payments/confirm
+// --------------------------------------------------
+
+export const confirmGatewayPaymentHandler = async (
+    req: Request,
+    res: Response,
+): Promise<void> => {
+    const actor = requireActor(req);
+    const { id } = req.params;
+    const input = ConfirmGatewayPaymentSchema.parse(req.body);
+
+    const result = await admissionService.confirmGatewayPayment(
         actor,
         id as string,
         input,

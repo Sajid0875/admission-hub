@@ -12,6 +12,8 @@
  *   POST   /:id/cancel                             cancel (super_admin)
  *   GET    /:id/payments                           list payments (all roles)
  *   POST   /:id/payments                           record payment (super_admin, partner_admin)
+ *   POST   /:id/payments/initiate                  start gateway checkout (super_admin, partner_admin)
+ *   POST   /:id/payments/confirm                   confirm gateway + record (super_admin, partner_admin)
  *   POST   /:id/payments/:paymentId/refund         refund payment (super_admin only)
  *
  * Every route is behind `protect`.
@@ -33,6 +35,8 @@ import {
     cancelAdmissionHandler,
     listPaymentsHandler,
     recordPaymentHandler,
+    initiateGatewayPaymentHandler,
+    confirmGatewayPaymentHandler,
     refundPaymentHandler,
 } from './admission.controller.js';
 
@@ -88,10 +92,24 @@ admissionRouter.post(
 );
 
 // --- Payments (append-only) ---
+// Static /initiate and /confirm before /:paymentId/refund so Express does not
+// treat "initiate"/"confirm" as paymentId path params.
 admissionRouter.post(
     '/:id/payments',
     authorize('SUPER_ADMIN', 'PARTNER_ADMIN'),
     asyncHandler(recordPaymentHandler),
+);
+
+admissionRouter.post(
+    '/:id/payments/initiate',
+    authorize('SUPER_ADMIN', 'PARTNER_ADMIN'),
+    asyncHandler(initiateGatewayPaymentHandler),
+);
+
+admissionRouter.post(
+    '/:id/payments/confirm',
+    authorize('SUPER_ADMIN', 'PARTNER_ADMIN'),
+    asyncHandler(confirmGatewayPaymentHandler),
 );
 
 // --- Refunds (super_admin only) ---

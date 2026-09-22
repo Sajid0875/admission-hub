@@ -634,6 +634,7 @@ npm run prisma:seed
 - [x] WhatsApp Twilio provider (`WHATSAPP_PROVIDER=twilio` + SID/token/from)
 - [x] `GET /commissions/summary` + FE live wiring (replaces client-side list derive)
 - [x] Docker Compose (Postgres + API + FE) + live E2E script on main
+- [x] Online payment gateway (stub default + Razorpay Orders when enabled)
 
 ---
 
@@ -791,6 +792,7 @@ WhatsApp Meta Cloud API adapter (env-selected; stub default): **23 Sep 2026**.
 PR #10 merged to `main` (WhatsApp Meta provider): **23 Sep 2026**.
 Twilio WhatsApp provider (`WHATSAPP_PROVIDER=twilio`): **23 Sep 2026**.
 PR #11 merged to `main` (Twilio WhatsApp): **23 Sep 2026**.
+Payment gateway (stub + Razorpay initiate/confirm): **23 Sep 2026**.
 
 ---
 
@@ -831,3 +833,12 @@ PR #11 merged to `main` (Twilio WhatsApp): **23 Sep 2026**.
 - Addresses normalized to `whatsapp:+E164`; missing creds → stub fallback
 - Unit tests extended for Twilio send + error paths (**10/10** messaging suite)
 - Commit: `24ebbe1` → merged via PR #11
+
+### Payment gateway (stub + Razorpay)
+- Adapter factory: `PAYMENT_GATEWAY_ENABLED` + `PAYMENT_GATEWAY_PROVIDER=stub|razorpay`
+- Signed intent tokens (`paymentIntent.ts`) bind admission/amount/order between initiate and confirm
+- `POST /admissions/:id/payments/initiate` + `POST .../confirm` → records `GATEWAY` payment via existing `recordPayment`
+- Razorpay: Orders API + HMAC `orderId|paymentId`; missing keys → stub fallback
+- FE Admissions modal: **Pay remaining (gateway)** one-click stub collect
+- OpenAPI v1.2.0 + unit tests `paymentGateway.test.ts` **7/7**
+- Env: `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / optional `PAYMENT_INTENT_SECRET`
