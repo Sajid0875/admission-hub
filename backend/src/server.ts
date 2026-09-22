@@ -17,6 +17,7 @@ import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { prisma } from './config/prisma.js';
+import { startFollowUpReminderJob } from './jobs/followupReminders.js';
 
 const startServer = async (): Promise<void> => {
     const app = createApp();
@@ -46,9 +47,13 @@ const startServer = async (): Promise<void> => {
         });
     });
 
+    // In-process follow-up reminders + WhatsApp stub fanout (no Redis yet).
+    const stopReminders = startFollowUpReminderJob();
+
     // --- Graceful shutdown ---
     const shutdown = async (signal: string): Promise<void> => {
         logger.info({ signal }, 'shutdown signal received');
+        stopReminders();
 
         const forceTimer = setTimeout(() => {
             logger.error('shutdown timed out, forcing exit');

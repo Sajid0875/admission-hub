@@ -1,0 +1,283 @@
+/**
+ * openapi.json - Minimal OpenAPI 3 scaffold for Admission Hub API.
+ * Not a full contract dump — enough for docs UI + future codegen expansion.
+ */
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Admission Hub API",
+    "description": "Multi-tenant partner admissions CRM backend (Express + Prisma).",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4000",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    { "name": "Health" },
+    { "name": "Auth" },
+    { "name": "Users" },
+    { "name": "Partners" },
+    { "name": "Leads" },
+    { "name": "Follow-ups" },
+    { "name": "Admissions" },
+    { "name": "Courses" },
+    { "name": "Marketing" },
+    { "name": "Commissions" },
+    { "name": "Notifications" },
+    { "name": "Reports" },
+    { "name": "Audit" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "message": { "type": "string" },
+              "statusCode": { "type": "integer" },
+              "requestId": { "type": "string" },
+              "details": {}
+            },
+            "required": ["message", "statusCode"]
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "token": { "type": "string" },
+          "user": { "type": "object" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "Liveness probe",
+        "responses": {
+          "200": {
+            "description": "Service is up"
+          }
+        }
+      }
+    },
+    "/api/v1/openapi.json": {
+      "get": {
+        "tags": ["Health"],
+        "summary": "OpenAPI document",
+        "responses": {
+          "200": {
+            "description": "OpenAPI 3 JSON"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login and receive JWT",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LoginResponse" }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Current user",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Current user profile" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "List users (tenant-scoped)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "User list" }
+        }
+      },
+      "post": {
+        "tags": ["Users"],
+        "summary": "Create / invite user",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "201": { "description": "Created (temporary password returned once)" }
+        }
+      }
+    },
+    "/api/v1/partners": {
+      "get": {
+        "tags": ["Partners"],
+        "summary": "List partners",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Partner list" } }
+      }
+    },
+    "/api/v1/leads": {
+      "get": {
+        "tags": ["Leads"],
+        "summary": "List leads",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Lead list" } }
+      },
+      "post": {
+        "tags": ["Leads"],
+        "summary": "Create lead",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "201": { "description": "Lead created" } }
+      }
+    },
+    "/api/v1/followups": {
+      "get": {
+        "tags": ["Follow-ups"],
+        "summary": "List follow-ups",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Follow-up list" } }
+      },
+      "post": {
+        "tags": ["Follow-ups"],
+        "summary": "Create follow-up",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "201": { "description": "Follow-up created" } }
+      }
+    },
+    "/api/v1/admissions": {
+      "get": {
+        "tags": ["Admissions"],
+        "summary": "List admissions",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Admission list" } }
+      }
+    },
+    "/api/v1/courses": {
+      "get": {
+        "tags": ["Courses"],
+        "summary": "List courses",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Course list" } }
+      }
+    },
+    "/api/v1/marketing-assets": {
+      "get": {
+        "tags": ["Marketing"],
+        "summary": "List marketing assets",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Asset list" } }
+      }
+    },
+    "/api/v1/commission-rules": {
+      "get": {
+        "tags": ["Commissions"],
+        "summary": "List commission rules (super_admin)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Rule list" } }
+      }
+    },
+    "/api/v1/commissions": {
+      "get": {
+        "tags": ["Commissions"],
+        "summary": "List commission records",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Commission list" } }
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "List own notifications",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Notification list + unreadCount" } }
+      }
+    },
+    "/api/v1/reports/dashboard": {
+      "get": {
+        "tags": ["Reports"],
+        "summary": "Dashboard aggregates",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "KPI payload" } }
+      }
+    },
+    "/api/v1/reports/export": {
+      "get": {
+        "tags": ["Reports"],
+        "summary": "CSV export",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "report",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "enum": ["leads", "admissions"] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV attachment",
+            "content": { "text/csv": { "schema": { "type": "string" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-logs": {
+      "get": {
+        "tags": ["Audit"],
+        "summary": "List audit logs (super_admin)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Audit log list" } }
+      }
+    }
+  }
+}

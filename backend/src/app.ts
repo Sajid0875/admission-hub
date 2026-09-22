@@ -33,8 +33,10 @@ import { commissionRouter } from './modules/commissions/commission.routes.js';
 import { notificationRouter } from './modules/notifications/notification.routes.js';
 import { reportRouter } from './modules/reports/report.routes.js';
 import { auditRouter } from './modules/audit/audit.routes.js';
+import { docsRouter } from './modules/docs/docs.routes.js';
 import { errorHandler } from './middleware/error.middleware.js';
 import { notFoundHandler } from './middleware/notFound.middleware.js';
+import { apiRateLimiter } from './middleware/rateLimit.middleware.js';
 
 export const createApp = (): Application => {
     const app = express();
@@ -102,6 +104,12 @@ export const createApp = (): Application => {
             timestamp: new Date().toISOString(),
         });
     });
+
+    // --- OpenAPI scaffold (public, before API rate limit) ---
+    app.use('/api/v1', docsRouter);
+
+    // --- API rate limit (applies to all /api/v1/* including auth) ---
+    app.use('/api/v1', apiRateLimiter);
 
     // --- API routes ---
     app.use('/api/v1/auth', authRouter);
