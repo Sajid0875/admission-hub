@@ -282,7 +282,7 @@ async function main(): Promise<void> {
     assert(rulesPa.status === 403, 'PA commission-rules → 403');
 
     // --- Marketing ---
-    console.log('\n[11] Marketing + CSV + docs');
+    console.log('\n[11] Marketing + CSV/PDF + docs');
     const assets = await api('GET', '/marketing-assets?page=1&limit=10', sa);
     assert(assets.status === 200, 'List marketing assets');
 
@@ -297,6 +297,14 @@ async function main(): Promise<void> {
 
     const csvAdm = await api('GET', '/reports/export?report=admissions', pa);
     assert(csvAdm.status === 200, 'CSV export admissions');
+
+    const pdfLeads = await api('GET', '/reports/export?report=leads&format=pdf', pa);
+    assert(pdfLeads.status === 200, 'PDF export leads');
+    assert(
+        pdfLeads.headers.get('content-type')?.includes('application/pdf') === true ||
+            pdfLeads.text.startsWith('%PDF'),
+        'PDF content-type / %PDF header for leads',
+    );
 
     const openapi = await fetch('http://localhost:4000/api/v1/openapi.json');
     assert(openapi.status === 200, 'OpenAPI JSON');

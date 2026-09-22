@@ -782,6 +782,8 @@ PR #2 merged to `main`; hardening (CI, rate limits, OpenAPI) + Phase-3 reminders
 Live E2E script + Docker Compose local stack: **23 Sep 2026**.
 Refresh tokens (login issues hashed refresh; `/auth/refresh` rotation; `/auth/logout` revoke; FE silent refresh): **23 Sep 2026**.
 PR #7 merged to `main`. OpenAPI deepened to full route surface (v1.1.0, 57 paths / 76 ops): **23 Sep 2026**.
+PR #8 merged to `main` (OpenAPI deepen): **23 Sep 2026**.
+PDF export for leads/admissions (`format=pdf` on `/reports/export`): **23 Sep 2026**.
 
 ---
 
@@ -793,8 +795,16 @@ PR #7 merged to `main`. OpenAPI deepened to full route surface (v1.1.0, 57 paths
 - FE: store `auth_refresh_token`, silent renew on 401, revoke on sign-out
 - Commit: `40b646d` → merged via PR #7
 
-### OpenAPI deepen (in progress → this commit)
-- Expanded `backend/src/docs/openapi.json` from thin list stubs to **57 paths / 76 operations**
+### OpenAPI deepen (PR #8 merged)
+- Expanded `backend/src/docs/openapi.json` from thin list stubs to **57 paths / 76 operations** (v1.1.0)
 - Covers users/partners/leads/follow-ups/admissions(+payments)/courses/marketing/commission-rules/commissions/notifications/reports/audit detail + action routes
 - Added shared schemas: HealthResponse, Create/Update Lead & User, StatusBody, Pagination
 - Swagger UI at `/api/v1/docs` picks this up automatically (static JSON)
+- Commit: `1cbc46f` → merged via PR #8
+
+### PDF report export (this commit → PR)
+- `GET /reports/export?report=leads|admissions&format=csv|pdf` (default csv, backward compatible)
+- Zero-dep PDF table builder (`shared/utils/pdfTable.ts`) — no new npm packages
+- FE Reports page: Leads/Admissions CSV + PDF buttons
+- Unit tests: `pdfTable.test.ts` **4/4 pass**; service PDF case added (needs DB)
+- OpenAPI export docs updated for `format` + `application/pdf`

@@ -461,15 +461,17 @@ export const reportService = {
   },
 
   /**
-   * Download CSV via GET /reports/export?report=leads|admissions
+   * Download CSV or PDF via GET /reports/export?report=leads|admissions&format=csv|pdf
    * Scope is enforced server-side (SA = all, PA = own partner).
    */
-  async exportCsv(
+  async exportReport(
     report: "leads" | "admissions",
-    opts: { from?: string; to?: string } = {}
+    opts: { from?: string; to?: string; format?: "csv" | "pdf" } = {}
   ): Promise<{ filename: string }> {
+    const format = opts.format ?? "csv";
     const q = new URLSearchParams();
     q.set("report", report);
+    q.set("format", format);
     if (opts.from) q.set("from", opts.from);
     if (opts.to) q.set("to", opts.to);
 
@@ -479,9 +481,12 @@ export const reportService = {
 
     const disposition = String(res.headers?.["content-disposition"] ?? "");
     const match = /filename="?([^"]+)"?/i.exec(disposition);
-    const filename = match?.[1] ?? `${report}-export.csv`;
+    const filename =
+      match?.[1] ?? `${report}-export.${format === "pdf" ? "pdf" : "csv"}`;
 
-    const blob = new Blob([res.data], { type: "text/csv;charset=utf-8" });
+    const mime =
+      format === "pdf" ? "application/pdf" : "text/csv;charset=utf-8";
+    const blob = new Blob([res.data], { type: mime });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -492,6 +497,14 @@ export const reportService = {
     URL.revokeObjectURL(url);
 
     return { filename };
+  },
+
+  /** @deprecated Prefer exportReport({ format: 'csv' }) */
+  async exportCsv(
+    report: "leads" | "admissions",
+    opts: { from?: string; to?: string } = {}
+  ): Promise<{ filename: string }> {
+    return this.exportReport(report, { ...opts, format: "csv" });
   },
 };
 

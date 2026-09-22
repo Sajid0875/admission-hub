@@ -5,7 +5,7 @@
  *   - Parse and validate query params with Zod
  *   - Delegate to report.service
  *   - Shape HTTP responses
- *   - For CSV export: set proper headers and return file body
+ *   - For CSV/PDF export: set proper headers and return file body
  *
  * Does NOT contain business logic. Does NOT touch prisma directly.
  *
@@ -163,7 +163,7 @@ export const coursesReportHandler = async (
 };
 
 // --------------------------------------------------
-// GET /api/v1/reports/export (CSV download)
+// GET /api/v1/reports/export (CSV or PDF download)
 // --------------------------------------------------
 
 export const exportReportHandler = async (

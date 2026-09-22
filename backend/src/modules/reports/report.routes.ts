@@ -12,7 +12,7 @@
  *   GET    /commissions           commissions report
  *   GET    /partners              partners report (super_admin only — service enforces)
  *   GET    /courses               courses report
- *   GET    /export                CSV export (leads or admissions)
+ *   GET    /export                CSV or PDF export (leads or admissions)
  *
  * Every route is behind `protect` + `authorize('SUPER_ADMIN', 'PARTNER_ADMIN')`.
  *

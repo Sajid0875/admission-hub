@@ -21,17 +21,21 @@ export default function ReportsPage() {
   const isSuperAdmin = currentUser?.role === "super_admin";
   const partnerId = isSuperAdmin ? undefined : currentUser?.partnerId || undefined;
 
-  const [exporting, setExporting] = useState<"leads" | "admissions" | null>(null);
+  const [exporting, setExporting] = useState<string | null>(null);
 
   const { data: report, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["reports", partnerId],
     queryFn: () => reportService.getReportsData(partnerId),
   });
 
-  const handleExport = async (reportType: "leads" | "admissions") => {
-    setExporting(reportType);
+  const handleExport = async (
+    reportType: "leads" | "admissions",
+    format: "csv" | "pdf" = "csv"
+  ) => {
+    const key = `${reportType}-${format}`;
+    setExporting(key);
     try {
-      const { filename } = await reportService.exportCsv(reportType);
+      const { filename } = await reportService.exportReport(reportType, { format });
       addToast({
         type: "success",
         title: "Export Ready",
@@ -41,7 +45,9 @@ export default function ReportsPage() {
       addToast({
         type: "error",
         title: "Export Failed",
-        message: (err as { message?: string })?.message || "Could not download CSV.",
+        message:
+          (err as { message?: string })?.message ||
+          `Could not download ${format.toUpperCase()}.`,
       });
     } finally {
       setExporting(null);
@@ -62,7 +68,7 @@ export default function ReportsPage() {
             </span>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Data-backed performance analytics, intake velocity, and CSV export for leads and admissions.
+            Data-backed performance analytics, intake velocity, and CSV/PDF export for leads and admissions.
           </p>
         </div>
 
@@ -70,22 +76,42 @@ export default function ReportsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleExport("leads")}
+            onClick={() => handleExport("leads", "csv")}
             disabled={exporting !== null || isLoading}
-            isLoading={exporting === "leads"}
+            isLoading={exporting === "leads-csv"}
             leftIcon={<Download className="w-3.5 h-3.5" />}
           >
-            Export Leads CSV
+            Leads CSV
           </Button>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleExport("admissions")}
+            onClick={() => handleExport("leads", "pdf")}
             disabled={exporting !== null || isLoading}
-            isLoading={exporting === "admissions"}
+            isLoading={exporting === "leads-pdf"}
             leftIcon={<Download className="w-3.5 h-3.5" />}
           >
-            Export Admissions CSV
+            Leads PDF
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleExport("admissions", "csv")}
+            disabled={exporting !== null || isLoading}
+            isLoading={exporting === "admissions-csv"}
+            leftIcon={<Download className="w-3.5 h-3.5" />}
+          >
+            Admissions CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleExport("admissions", "pdf")}
+            disabled={exporting !== null || isLoading}
+            isLoading={exporting === "admissions-pdf"}
+            leftIcon={<Download className="w-3.5 h-3.5" />}
+          >
+            Admissions PDF
           </Button>
           <Button
             variant="outline"

@@ -2928,7 +2928,7 @@
         "tags": [
           "Reports"
         ],
-        "summary": "CSV export",
+        "summary": "CSV or PDF export",
         "security": [
           {
             "bearerAuth": []
@@ -2936,11 +2936,17 @@
         ],
         "responses": {
           "200": {
-            "description": "CSV attachment",
+            "description": "File attachment (CSV or PDF)",
             "content": {
               "text/csv": {
                 "schema": {
                   "type": "string"
+                }
+              },
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }
@@ -2963,6 +2969,19 @@
                 "leads",
                 "admissions"
               ]
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "pdf"
+              ],
+              "default": "csv"
             }
           }
         ]
