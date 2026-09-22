@@ -72,6 +72,10 @@ Defaults: access `15m`, refresh `30d` (`JWT_EXPIRES_IN` / `JWT_REFRESH_EXPIRES_I
 
 Interactive API docs: http://localhost:4000/api/v1/docs (OpenAPI JSON: `/api/v1/openapi.json`).
 
+## Production deploy
+
+See [docs/DEPLOY.md](docs/DEPLOY.md) — Vercel (FE) + Render Blueprint (API + Postgres) from `render.yaml`.
+
 ## WhatsApp
 
 Follow-up reminders can fan out WhatsApp text via an adapter:

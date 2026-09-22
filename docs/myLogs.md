@@ -793,6 +793,8 @@ PR #10 merged to `main` (WhatsApp Meta provider): **23 Sep 2026**.
 Twilio WhatsApp provider (`WHATSAPP_PROVIDER=twilio`): **23 Sep 2026**.
 PR #11 merged to `main` (Twilio WhatsApp): **23 Sep 2026**.
 Payment gateway (stub + Razorpay initiate/confirm): **23 Sep 2026**.
+PR #12 merged to `main` (payment gateway): **23 Sep 2026**.
+Deploy prep (Render Blueprint + Vercel FE guide): **23 Sep 2026**.
 
 ---
 
@@ -842,3 +844,9 @@ Payment gateway (stub + Razorpay initiate/confirm): **23 Sep 2026**.
 - FE Admissions modal: **Pay remaining (gateway)** one-click stub collect
 - OpenAPI v1.2.0 + unit tests `paymentGateway.test.ts` **7/7**
 - Env: `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / optional `PAYMENT_INTENT_SECRET`
+- Commit: `0c9836d` → merged via PR #12
+
+### Deploy prep (in progress)
+- `render.yaml` Blueprint: Postgres + Docker API (`/health`, migrate+seed on boot)
+- `frontend/vercel.json` + `docs/DEPLOY.md` (Vercel FE ↔ Render API CORS wiring)
+- Live URLs pending host account auth (Vercel / Render / Railway)
