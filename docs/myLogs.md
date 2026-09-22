@@ -731,6 +731,10 @@ SA list seed rule → create PERCENTAGE rule on temp course → `PATCH` rate →
 **Reports CSV smoke (23 Sep 2026):**  
 PA `GET /reports/export?report=leads` and `admissions` → 200 `text/csv` with Content-Disposition filename. FE `tsc` clean.
 
+**Live API E2E re-run (23 Sep 2026):**  
+`frontend` `npm run test:smoke` → **29/29**.  
+`backend` `npm run test:e2e` (`scripts/live-e2e.ts`) → **39/39** against `:4000` — all-role login, partners 403 for counselor, lead/follow-up/admission/verify/commission/approve, invite+temp password, audit, notifications, commission-rules SA/PA gate, marketing, CSV, OpenAPI/docs, counselor boundaries, `/commissions/summary`.
+
 ---
 
 ### 5) Test-Type Summary (What “Thorough” Means Here)
@@ -740,9 +744,9 @@ PA `GET /reports/export?report=leads` and `admissions` → 200 `text/csv` with C
 | Unit / service (Vitest) | Backend modules | **244/244 pass** |
 | Integration-style DB fixtures | Backend test DB | Covered inside Vitest suites |
 | Manual curl smoke | Each backend module during build | Passed (logged per phase above) |
-| Frontend smoke script | `frontend/scripts/smoke-tests.ts` | **29/29 pass** |
+| Frontend smoke script | `frontend/scripts/smoke-tests.ts` | **29/29 pass** (re-run 23 Sep 2026) |
 | Static analysis | FE lint + FE/BE `tsc` | Pass |
-| Live E2E / workflow | Full stack against Postgres | Core role workflows pass (22–23 Sep 2026) |
+| Live E2E / workflow | `backend/scripts/live-e2e.ts` against Postgres | **39/39 pass** (re-run 23 Sep 2026) |
 | Browser UI pass | Manual login + page flows during integration | Exercised for auth, leads, follow-ups, team, admissions, commissions, courses, marketing, notifications, commission rules, dashboards |
 
 ---
@@ -770,7 +774,7 @@ PA `GET /reports/export?report=leads` and `admissions` → 200 `text/csv` with C
 
 ## Full Stack Integration End Date: **23 September 2026**
 
-Core role E2E + backend module suite: **22 Sep 2026**.  
+Core role E2E + backend module suite: **23 Sep 2026**.  
 Phase-2 FE polish (courses, marketing, notifications, commission rules): **23 Sep 2026**.  
 PR #2 merged to `main`; hardening (CI, rate limits, OpenAPI) + Phase-3 reminders/WhatsApp stub: **23 Sep 2026**.  
 `GET /commissions/summary` API + FE live wiring; OpenAPI JSON comment fix (tsx): **23 Sep 2026**.
