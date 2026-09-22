@@ -1,0 +1,53 @@
+# Render Blueprint — API web service
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Postgres: Render no longer offers a free DB. Options:
+#   A) Add a paid Render Postgres in the dashboard and paste DATABASE_URL, or
+#   B) Use Neon (https://neon.tech) free tier → set DATABASE_URL on this service.
+#
+# Deploy: Render Dashboard → New → Blueprint → select this repo (main).
+# Then deploy FE on Vercel (see docs/DEPLOY.md) and set CLIENT_URL here.
+
+services:
+  - type: web
+    name: admission-hub-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4000"
+      # Required — Neon or Render Postgres connection string
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 30d
+      - key: LOG_LEVEL
+        value: info
+      - key: FOLLOWUP_REMINDERS_ENABLED
+        value: "true"
+      - key: FOLLOWUP_REMINDER_INTERVAL_MS
+        value: "60000"
+      - key: FOLLOWUP_DUE_SOON_MINUTES
+        value: "60"
+      - key: WHATSAPP_ENABLED
+        value: "false"
+      - key: WHATSAPP_PROVIDER
+        value: stub
+      - key: PAYMENT_GATEWAY_ENABLED
+        value: "false"
+      - key: PAYMENT_GATEWAY_PROVIDER
+        value: stub
+      - key: RUN_SEED
+        value: "true"
+      # Set to Vercel production URL after FE deploy
+      - key: CLIENT_URL
+        sync: false
