@@ -4,7 +4,7 @@
 
 ## Start Date: 13 September 2026
 
-## End Date: 22 September 2026
+## End Date: 22–23 September 2026
 
 ## System Design Reference: https://strata-void-73605916.figma.site/
 
@@ -21,8 +21,8 @@
 - **Git Remote**: `https://github.com/Sajid0875/admission-hub`
 - **Git Branch**: `dev_Sohaim`
 - **Developer Identity**: `s0a1m0x01` (`cx3eno@gmail.com`)
-- **Workspace**: `admission-hub/` (monorepo) — backend lives in `backend/`
-- **Status**: **Backend MVP COMPLETE** — all 13 modules shipped, 235 tests passing
+- **Workspace**: `admission-hub/` (monorepo) — backend lives in `backend/`, frontend in `frontend/`
+- **Status**: **Backend MVP COMPLETE** (235 tests) + **Full Stack Integration COMPLETE** (22–23 Sep 2026; Phase-2 FE: courses, marketing, notifications, commission rules)
 
 ---
 
@@ -38,7 +38,11 @@
 - **Security**: Helmet, CORS, OWASP guidance
 - **Testing**: Vitest + isolated test DB
 - **Dev Runner**: tsx
+- **Frontend Framework**: Next.js 14 (App Router) + React 18
+- **Frontend State / Data**: Zustand + TanStack Query
+- **Frontend Styling**: Tailwind CSS
 - **Environment**: Ubuntu + bash
+- **Local Ports**: Backend `4000`, Frontend `3000`, Postgres `5432`
 
 ---
 
@@ -465,21 +469,273 @@
 | Audit Logs | 2 | 14 | Done |
 | **Total** | **70** | **235** | **100% COMPLETE** |
 
+
+## Backend Domain Complete: 22 September, 2026
+
 ---
 
-## Post-MVP Backlog (Not Part of SRS Phase 1 + 2)
+## Full Stack Integration — Frontend + Live API
 
-These are optional follow-ups that would enhance the backend but are not required by the MVP scope:
+- **Frontend Path**: `admission-hub/frontend/`
+- **Frontend Stack**: Next.js 14 (App Router) + React 18 + TypeScript + TanStack Query + Tailwind CSS + Zustand
+- **API Base**: `http://localhost:4000/api/v1` (`NEXT_PUBLIC_API_URL`)
+- **Mocks Gate**: `NEXT_PUBLIC_USE_MOCKS=false` (live API by default; mocks only when explicitly enabled)
+- **Local Ports**: Backend `:4000`, Frontend `:3000`, PostgreSQL `:5432`
+- **Status**: **Local full-stack integration complete** — Phase 1 + Phase 2 FE surfaces wired live (courses, marketing, notifications, commission rules); role workflows verified against the backend
+- **Git note (23 Sep 2026)**: Backend/docs commit on monorepo `dev_Sohaim`; frontend lives in nested checkout on `sajid/frontend-phase-1` (same remote) — commit frontend changes there separately
 
-- **Wire `logAction()` into existing modules** — currently the helper exists but isn't called from partner/user/admission/commission services
-- **Wire `notify()` into existing modules** — same: helper exists, not yet called
-- **OpenAPI / Swagger spec** — auto-generated documentation from Zod schemas
-- **Rate limiting on non-auth routes** — currently only `/api/auth/*` has rate limiting
-- **Refresh tokens** — currently only short-lived access tokens
-- **Redis-backed background jobs** — follow-up reminders, notification fanout
-- **PDF export** — reports currently export CSV only
-- **Docker / Kubernetes manifests** — for production deployment
-- **CI/CD pipeline** — GitHub Actions for tests + deploy
+### Local QA Login Credentials (from `npm run prisma:seed`)
+
+| Role | Email | Password | Notes |
+|---|---|---|---|
+| Super Admin | `admin@whitedavid23.local` | `ChangeMe!Adm1n2026` | Seeded since Phase 3B; password not overwritten on re-seed |
+| Partner Admin | `partner@whitedavid23.com` | `ChangeMe!Partner2026` | Reset on every seed (demo partner tenant) |
+| Counselor | `counselor@whitedavid23.com` | `ChangeMe!Counselor2026` | Reset on every seed (same demo partner) |
+| Support | `support@whitedavid23.com` | `ChangeMe!Support2026` | Reset on every seed (no partner) |
+
+**Seed also creates:**
+- Demo partner: `demo-partner@whitedavid23.local` (ACTIVE)
+- Demo course: `Full Stack Software Engineering` (fee ₹55,000)
+- Demo commission rule: **10%** on that course
+
+**Re-seed command** (from `backend/`):
+
+```bash
+npm run prisma:seed
+```
+
+---
+
+### Technologies / Surfaces Touched (Full Stack Pass)
+
+| Layer | What |
+|---|---|
+| Backend | Express modules, Prisma seed, `logAction()` / `notify()` wiring, `server.ts` listen error handling, `tsconfig.json` TS6 `baseUrl` cleanup |
+| Frontend | Auth login, AppShell, dashboard, leads, follow-ups, team, admissions, commissions, audit, courses, marketing, notifications, **commission rules** |
+| Integration | DTO mappers (`frontend/src/lib/mappers.ts`), mock gate (`lib/mocks.ts`), API services under `services/api/` |
+| Env / Ops | User-owned Postgres, migrate + seed, single backend listener on `:4000` |
+
+---
+
+### End-to-End Workflows Verified Live (22 Sep 2026)
+
+1. **Auth** — Super Admin / Partner Admin / Counselor / Support login via presets
+2. **Partners** — Super Admin list / create / approve (tenant ACTIVE)
+3. **Leads** — Partner Admin / Counselor create + list + detail + status change
+4. **Follow-ups** — Agenda via `GET /followups`; create from lead detail (PA/Counselor only)
+5. **Team invite** — `POST /users` returns one-time `temporaryPassword`; UI toast surfaces it
+6. **Admission convert** — Lead detail → Convert to Admission → `POST /admissions`
+7. **Admission verify** — Admissions page Verify → commission record generated
+8. **Commissions / payout** — Super Admin `PATCH /commissions/:id/status` → `APPROVED`
+9. **Audit** — `GET /audit-logs` shows `ADMISSION_CREATED`, `ADMISSION_VERIFIED`, `COMMISSION_APPROVED`, `USER_CREATED`
+10. **Dashboards** — Role-scoped KPIs; Counselor skips SA/PA-only reports endpoint
+11. **Courses** — Live catalog list/create/status via `GET/POST /courses` + `PATCH /courses/:id/status` (SA writes)
+12. **Marketing assets** — Live list/create/archive via `GET/POST/DELETE /marketing-assets` (SA writes)
+13. **Notifications** — Header bell + drawer; live unread badge; mark one/all read
+14. **Commission rules** — SA CRUD via `GET/POST/PATCH/DELETE /commission-rules`
+15. **Reports CSV export** — SA/PA download via `GET /reports/export?report=leads|admissions`
+
+---
+
+### Bugs Fixed During Full Stack Integration
+
+| Bug | Root Cause | Fix |
+|---|---|---|
+| `EADDRINUSE :::4000` | Multiple `tsx watch` / leftover Node listeners | Kill orphans; start one backend; clearer fatal in `server.ts` on bind failure; skip `server.close` when never listening |
+| Super Admin create lead → 403 | Backend does not allow SA to create leads | UI: remove SA lead-create path; create as Partner Admin / Counselor |
+| Course create/admission 422 on fake `course_ds` id | Non-UUID courseId | Omit invalid courseId; seed real UUID course |
+| Dashboard mock bleed / empty KPIs | Mocks still leaking when live API intended | `NEXT_PUBLIC_USE_MOCKS=false` + `areMocksEnabled()` gate |
+| UUID shown as page title | AppShell used last path segment (lead id) | Title overrides + UUID skip |
+| Follow-up create silent fail | `dueAt` not ISO; SA blocked by authorize | Send ISO datetime; hide create for SA |
+| Follow-ups page empty | Wrong client path / contract | Wire to `GET /followups` |
+| Partner Admin team/commissions 403 | FE sent `partnerId` query (SA-only filter) | Omit `partnerId` for non–Super Admin |
+| Counselor dashboard 403 | Called `/reports/dashboard` (SA/PA only) | Skip reports dashboard for Counselor |
+| Commission summary showed `$—` | Truthy check treated `0` as missing | Render `summary.totalEarned.toLocaleString()` when summary exists |
+| Invite temp password invisible | Mapper dropped `temporaryPassword` | Return + toast one-time password |
+| Admission create body mismatch | FE sent `totalFee` | Align to backend `fee` field |
+| No convert / verify UI | Frontend incomplete | Lead convert modal + Admissions Verify button |
+| QA partner/counselor login unstable | One-time invite passwords only | Seed stable QA users + login presets |
+| Audit empty after mutations | `logAction()` / `notify()` not called from domain services | Wired into partners, users, leads, admissions, commissions |
+| Always-on notification badge | Header hardcoded rose dot | Badge driven by `GET /notifications/unread-count` |
+| Notification type mapping wrong | FE expected `LEAD_ASSIGNED` uppercase | Map backend snake_case (`lead_assigned`, `commission_approved`, …) |
+
+---
+
+### Patches / Code Changes (Full Stack Pass — Key Files)
+
+**Backend**
+- `backend/prisma/seed.ts` — demo partner, course, 10% rule, QA users with known passwords
+- `backend/tsconfig.json` — dropped deprecated `baseUrl` + unused `@/*` paths; CRLF → LF
+- `backend/src/server.ts` — `listen` error handler for `EADDRINUSE`; safe shutdown when not listening
+- `backend/src/app.ts` — note that domain modules emit audit/notifications
+- `backend/src/modules/partners/partner.service.ts` — `logAction` + `notify` on create/status
+- `backend/src/modules/users/user.service.ts` — `logAction` on create/status
+- `backend/src/modules/leads/lead.service.ts` — `logAction` + `notify` on assign/status
+- `backend/src/modules/admissions/admission.service.ts` — `logAction` + `notify` on create/verify
+- `backend/src/modules/commissions/commission.service.ts` — `logAction` + `notify` on status change
+
+**Frontend**
+- `frontend/src/app/login/page.tsx` — filled Quick Role Preset passwords
+- `frontend/src/app/(dashboard)/team/page.tsx` — invite toast with temporary password
+- `frontend/src/app/(dashboard)/leads/[id]/page.tsx` — Convert to Admission modal
+- `frontend/src/app/(dashboard)/admissions/page.tsx` — Verify action (SA/PA)
+- `frontend/src/app/(dashboard)/commissions/page.tsx` — `$0` KPI display; no illegal `partnerId`
+- `frontend/src/app/(dashboard)/follow-ups/page.tsx` — live `/followups` list
+- `frontend/src/services/api/admissionService.ts` — `fee` payload, `listCourses`, `verifyAdmission`
+- `frontend/src/services/api/adminService.ts` — invite `temporaryPassword`; audit mapper; notification mapper + `getUnreadCount` + deep links
+- `frontend/src/lib/mappers.ts` / `lib/mocks.ts` — DTO mapping + mock gate
+- `frontend/src/components/shell/AppShell.tsx` — human titles (no UUID); Courses / Marketing / Commission Rules
+- `frontend/src/components/shell/navigationConfig.ts` — Courses, Marketing, Commission Rules (SA) nav
+- `frontend/src/components/shell/Header.tsx` — unread badge from live `GET /notifications/unread-count`
+- `frontend/src/components/notifications/NotificationCenter.tsx` — live drawer, mark one/all, relative time, deep links
+- `frontend/src/types/course.ts` / `types/marketing.ts` / `types/commission.ts` — course, marketing, commission-rule types
+- `frontend/src/services/api/courseService.ts` — live `GET/POST /courses`, `PATCH .../status`
+- `frontend/src/services/api/marketingService.ts` — live `GET/POST/DELETE /marketing-assets`
+- `frontend/src/services/api/commissionRuleService.ts` — live SA `GET/POST/PATCH/DELETE /commission-rules`
+- `frontend/src/services/api/index.ts` / `types/index.ts` — barrel exports
+- `frontend/src/app/(dashboard)/courses/page.tsx` — SA create + activate/archive; global read
+- `frontend/src/app/(dashboard)/marketing/page.tsx` — SA create + archive; course picker; type filter
+- `frontend/src/app/(dashboard)/commission-rules/page.tsx` — SA list/create/edit/delete rules UI
+- `frontend/src/app/(dashboard)/reports/page.tsx` — Export Leads/Admissions CSV buttons
+- `frontend/src/services/api/adminService.ts` — `reportService.exportCsv()` blob download
+
+---
+
+### Post-MVP Backlog (Updated after Full Stack Integration)
+
+**Done in this pass (removed from open backlog):**
+- [x] Wire `logAction()` into partner / user / lead / admission / commission services
+- [x] Wire `notify()` into partner / lead / admission / commission flows
+- [x] Stabilize local QA login presets via seed
+- [x] Frontend live API contract alignment for core role workflows
+- [x] Courses + Marketing Assets live UI wired to Phase-2 APIs
+- [x] In-app Notifications UI (header bell + drawer + unread badge)
+- [x] Commission Rules SA UI wired to `/commission-rules`
+- [x] Reports CSV export UI wired to `GET /reports/export`
+
+**Still optional / not required for local integration:**
+- OpenAPI / Swagger spec
+- Rate limiting on non-auth routes
+- Refresh tokens
+- Redis-backed background jobs (follow-up reminders, notification fanout)
+- PDF export (CSV only today)
+- Docker / Kubernetes manifests
+- CI/CD pipeline (GitHub Actions)
+- Dedicated `GET /commissions/summary` (FE currently derives summary from list)
+- Aikido security scan MCP (not configured in this environment)
+
+---
+
+## Tests Passed Thoroughly (By Area)
+
+Documented separately below: automated suite counts, curl/API smokes per backend module, frontend smoke, static checks, and live full-stack workflow verification (22–23 Sep 2026).
+
+### 1) Backend — Automated Service Tests (Vitest + `admission_hub_test`)
+
+| Area | Test file | Count | What was covered thoroughly |
+|---|---|---|---|
+| Auth | `auth.service.test.ts` | 11 | Valid login, wrong password, inactive user, `/me`, email normalize |
+| Users | `user.service.test.ts` | 23 | Create + temp password, tenant list scope, role assignment rules, status/role change, 403 boundaries |
+| Partners | `partner.service.test.ts` | 26 | Create PENDING, approve ACTIVE, invalid transitions, duplicate email 409, SA-only writes |
+| Leads | `lead.service.test.ts` | 26 | CRUD, phone duplicate 409, assign counselor-only, status state machine, timeline, archive, tenant scope |
+| Follow-ups | `followup.service.test.ts` | 23 | Create/snooze/complete/cancel lifecycle, overdue flags, nested lead list, unauthorized roles |
+| Admissions + Payments | `admission.service.test.ts` | 24 | One-per-lead, admit flips lead, payments PARTIAL→PAID, overpay blocked, verify + commission, refund |
+| Courses | `course.service.test.ts` | 12 | SA create/update/status, global list read, non-SA write 403 |
+| Marketing Assets | `marketing-asset.service.test.ts` | 15 | Create linked to course, filters, soft-archive, default hide archived |
+| Commission Rules | `commission-rule.service.test.ts` | 14 | CRUD, rate bounds, duplicate course rule 409, `resolveCommissionRate` |
+| Commissions | `commission.service.test.ts` | 14 | List scope, PENDING→APPROVED→PAID, invalid transitions, PA cannot change status |
+| Notifications | `notification.service.test.ts` | 14 | Own-user list, unread count, mark one/all read, cross-user 404 |
+| Reports | `report.service.test.ts` | 19 | Dashboard/funnel aggregates, per-report scopes, CSV export, partners report SA-only |
+| Audit | `audit.service.test.ts` | 14 | List/filter/get-by-id, append-only (no write routes), SA-only access, `logAction` helper |
+| **Total** | **13 files** | **235** | **All passing on isolated test DB** |
+
+Command: `npm test` in `backend/` (after `npm run test:db:setup`).
+
+---
+
+### 2) Backend — Manual / Curl Smoke Tests (Per Module, During Build)
+
+| Area | Smoke checks that passed |
+|---|---|
+| Health / Boot | `GET /health` → 200 |
+| Auth | Login 200 + token; `/me` 200; missing token 401; bad password 401 |
+| Users | SA lists users; create partner_admin returns `temporaryPassword`; PA lists own org only; PA cannot create SUPER_ADMIN → 403 |
+| Partners | Create → PENDING; duplicate email → 409; approve → ACTIVE + metadata; invalid transition → 400 |
+| Leads | Create → NEW; duplicate phone → 409; assign → 200; invalid status jump → 400; timeline activities present |
+| Follow-ups | Create PENDING; snooze past → 400 / future → 200; complete + cancel; nested lead follow-ups list |
+| Admissions + Payments | Create → ADMITTED; duplicate admit → 409; partial/full payment; overpay → 400; verify → commission; refund |
+| Courses + Marketing | SA creates course; PA list OK / create 403; asset create/list/filter; DELETE soft-archives |
+| Commissions | Rule 20% create; verify admission generates amount; list SA vs PA scope; status machine; PA status change 403 |
+| Notifications | List own only; mark read; unread count; mark-all |
+| Reports | Dashboard + lead/admission/revenue/conversion/commission reports; CSV headers; PA partners report 403 |
+| Audit | List newest-first; filters; get-by-id; PA 403; no POST/DELETE |
+
+---
+
+### 3) Frontend — Automated Smoke + Static Checks
+
+| Kind | Result | Notes |
+|---|---|---|
+| Frontend smoke suite | **29 / 29** | `npm run test:smoke` in `frontend/` (mock-mode contract checks) |
+| Frontend TypeScript | Pass | `npx tsc --noEmit` |
+| Frontend lint | Pass | `next lint` — 0 issues |
+| Backend TypeScript | Pass | `npm run typecheck` (`tsc --noEmit`) after `tsconfig.json` cleanup |
+
+---
+
+### 4) Full Stack Live Integration Tests (22–23 Sep 2026 — Against Real API + Postgres)
+
+Mocks off (`NEXT_PUBLIC_USE_MOCKS=false`). Backend `:4000`, Frontend `:3000`. Seeded QA accounts used.
+
+| Workflow / Area | Roles exercised | Thorough checks that passed |
+|---|---|---|
+| **Auth / Login presets** | SA, PA, Counselor, Support | All four seeded emails/passwords login → JWT; login page Quick Role Preset fills credentials |
+| **Partners** | SA | List partners; create/approve path (tenant ACTIVE) |
+| **Leads** | PA, Counselor | Create/list/detail; status transitions; SA lead-create correctly blocked (403) |
+| **Follow-ups** | PA, Counselor | Agenda loads via `GET /followups`; create from lead detail with ISO `dueAt`; SA create hidden |
+| **Team invite** | PA | `POST /users` returns `temporaryPassword`; UI toast shows one-time password |
+| **Admission convert** | PA | Lead → Convert to Admission → `POST /admissions` with real course UUID + `fee` |
+| **Admission verify → commission** | PA verify, SA payout | Verify → `VERIFIED`; commission row created (10% seed rule); SA `PATCH` status → `APPROVED` |
+| **Commissions UI** | SA / PA | Ledger loads; summary KPIs show `$0` instead of `$—`; PA does not send illegal `partnerId` |
+| **Audit** | SA | `GET /audit-logs` contains `ADMISSION_CREATED`, `ADMISSION_VERIFIED`, `COMMISSION_APPROVED`, `USER_CREATED` after mutations |
+| **Dashboards** | SA, PA, Counselor | Live KPIs; Counselor does not call SA/PA-only `/reports/dashboard` (no 403) |
+| **Tenant / authorize boundaries** | PA, Counselor | Team/commissions without `partnerId` filter; counselor partners/commissions remain forbidden where designed |
+| **Ops / listen** | Dev | Single listener on `:4000`; `EADDRINUSE` cleared; `/health` OK after restart |
+| **Config** | Dev | `backend/tsconfig.json` deprecation cleared; LF; `tsc` clean |
+| **Courses** | SA | `POST /courses` → ACTIVE; `PATCH .../status` INACTIVE then ARCHIVED; FE page + nav |
+| **Marketing assets** | SA | `POST /marketing-assets` linked to course; soft `DELETE` → ARCHIVED; FE page + nav |
+| **Notifications** | PA | List own alerts; unread badge; `PATCH .../read-all` clears count; FE drawer in Header |
+| **Commission rules** | SA | List seed 10% rule; create/patch/delete; PA list → 403; FE `/commission-rules` |
+| **Reports CSV export** | SA / PA | `GET /reports/export?report=leads|admissions` → CSV attachment; FE download buttons |
+
+**Representative live chain verified in one run:**  
+Login (all roles) → PA create lead → create admission → verify → commission appears → SA approve payout → PA invite user (temp password) → SA audit list shows corresponding actions.
+
+**Courses + Marketing smoke (22 Sep 2026):**  
+SA login → create course → change status → create marketing asset (linked course) → soft-archive asset → archive course. FE `tsc --noEmit` clean after wiring.
+
+**Notifications smoke (22 Sep 2026):**  
+PA login → `GET /notifications` returns admission/commission alerts → `GET /unread-count` → `PATCH /read-all` → unread 0. FE `tsc` clean.
+
+**Commission rules smoke (22–23 Sep 2026):**  
+SA list seed rule → create PERCENTAGE rule on temp course → `PATCH` rate → `DELETE` 204 → PA list forbidden (403). FE `tsc` clean.
+
+**Reports CSV smoke (23 Sep 2026):**  
+PA `GET /reports/export?report=leads` and `admissions` → 200 `text/csv` with Content-Disposition filename. FE `tsc` clean.
+
+---
+
+### 5) Test-Type Summary (What “Thorough” Means Here)
+
+| Test type | Where | Status |
+|---|---|---|
+| Unit / service (Vitest) | Backend modules | **235/235 pass** |
+| Integration-style DB fixtures | Backend test DB | Covered inside Vitest suites |
+| Manual curl smoke | Each backend module during build | Passed (logged per phase above) |
+| Frontend smoke script | `frontend/scripts/smoke-tests.ts` | **29/29 pass** |
+| Static analysis | FE lint + FE/BE `tsc` | Pass |
+| Live E2E / workflow | Full stack against Postgres | Core role workflows pass (22–23 Sep 2026) |
+| Browser UI pass | Manual login + page flows during integration | Exercised for auth, leads, follow-ups, team, admissions, commissions, courses, marketing, notifications, commission rules, dashboards |
 
 ---
 
@@ -489,19 +745,22 @@ These are optional follow-ups that would enhance the backend but are not require
 - Stage files by explicit path — never `git add .`
 - Always check `git status` between `git add` and `git commit`
 - Backend code: `admission-hub/backend/`
+- Frontend code: `admission-hub/frontend/`
 - Docs: `admission-hub/docs/`
 - Never read `process.env` outside `src/config/env.ts`
 - Never `new PrismaClient()` outside `src/config/prisma.ts`
 - ESM: every relative import uses `.js` extension
-- Never run `npm`/`npx` from repo root — always from `backend/`
+- Never run `npm`/`npx` from repo root — always from `backend/` or `frontend/`
 - Use `./node_modules/.bin/prisma` — avoid `npx prisma` (may fetch a different version)
 - Tests must run against `admission_hub_test` only
 - Sanity-check shell vars with `echo "$VAR"` before use
 - For complex JSON payloads, write to a temp file and use `curl -d @file.json`
 - Env: Ubuntu + bash
-- IDE: Antigravity
+- IDE: Cursor / Antigravity
 
 ---
 
-## Full Stack Integration End Date:
-[to be filled when frontend integration completes]
+## Full Stack Integration End Date: **23 September 2026**
+
+Core role E2E + backend module suite: **22 Sep 2026**.  
+Phase-2 FE polish (courses, marketing, notifications, commission rules): **22–23 Sep 2026**.

@@ -118,8 +118,7 @@ export const createApp = (): Application => {
     app.use('/api/v1/reports', reportRouter);
     app.use('/api/v1/audit-logs', auditRouter);
 
-    // All planned modules have been mounted.
-    // Future work: wire notify() and logAction() into existing services.
+    // Domain modules emit audit + notifications via logAction()/notify().
     // --- 404 handler (must be after all routes) ---
     app.use(notFoundHandler);
 

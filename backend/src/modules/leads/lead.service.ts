@@ -30,6 +30,8 @@ import {
     buildTenantScope,
     type ScopeUser,
 } from '../../shared/utils/scope.js';
+import { AuditAction, logAction } from '../../shared/utils/audit.js';
+import { NotificationType, notify } from '../../shared/utils/notify.js';
 import {
     ActivityType,
     LeadPriority,
@@ -590,6 +592,27 @@ export const assignLead = async (
         'lead assignment changed',
     );
 
+    void logAction({
+        actorId: actor.id,
+        partnerId: lead.partnerId,
+        action: AuditAction.LEAD_TRANSFERRED,
+        entityType: 'lead',
+        entityId: leadId,
+        newValue: { assignedTo: input.assignedTo },
+    });
+
+    if (input.assignedTo) {
+        void notify({
+            userId: input.assignedTo,
+            partnerId: lead.partnerId,
+            type: NotificationType.LEAD_ASSIGNED,
+            title: 'Lead assigned',
+            message: 'A lead was assigned to you.',
+            referenceType: 'lead',
+            referenceId: leadId,
+        });
+    }
+
     return toSafeLead(updated);
 };
 
@@ -623,6 +646,16 @@ export const changeLeadStatus = async (
         { actorId: actor.id, leadId, from: lead.status, to: input.status },
         'lead status changed',
     );
+
+    void logAction({
+        actorId: actor.id,
+        partnerId: lead.partnerId,
+        action: AuditAction.LEAD_STATUS_CHANGED,
+        entityType: 'lead',
+        entityId: leadId,
+        oldValue: { status: lead.status },
+        newValue: { status: input.status },
+    });
 
     return toSafeLead(updated);
 };

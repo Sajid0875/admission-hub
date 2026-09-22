@@ -12,7 +12,14 @@
  * Run: npm run prisma:seed
  */
 
-import { PrismaClient, RoleName } from '@prisma/client';
+import {
+    CommissionType,
+    CourseStatus,
+    PartnerStatus,
+    PrismaClient,
+    RoleName,
+    UserStatus,
+} from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -124,6 +131,28 @@ const SUPER_ADMIN_EMAIL = 'admin@whitedavid23.local';
 const SUPER_ADMIN_PASSWORD = 'ChangeMe!Adm1n2026';
 const SUPER_ADMIN_NAME = 'Super Admin';
 
+// Local QA presets — passwords are intentionally reset on every seed so login
+// presets on the frontend stay stable for review/demo.
+const DEMO_PARTNER_EMAIL = 'demo-partner@whitedavid23.local';
+const QA_PARTNER_ADMIN = {
+    email: 'partner@whitedavid23.com',
+    password: 'ChangeMe!Partner2026',
+    name: 'Demo Partner Admin',
+};
+const QA_COUNSELOR = {
+    email: 'counselor@whitedavid23.com',
+    password: 'ChangeMe!Counselor2026',
+    name: 'Demo Counselor',
+};
+const QA_SUPPORT = {
+    email: 'support@whitedavid23.com',
+    password: 'ChangeMe!Support2026',
+    name: 'Demo Support',
+};
+const DEMO_COURSE_TITLE = 'Full Stack Software Engineering';
+const DEMO_COURSE_FEE = 55000;
+const DEMO_COMMISSION_RATE = 10;
+
 // --------------------------------------------------
 // Seed
 // --------------------------------------------------
@@ -207,6 +236,127 @@ async function seedSuperAdmin(roleMap: Map<RoleName, string>): Promise<void> {
     });
 }
 
+async function seedDemoPartner(): Promise<string> {
+    const partner = await prisma.partner.upsert({
+        where: { email: DEMO_PARTNER_EMAIL },
+        update: {
+            academyName: 'WhiteDavid23 Demo Academy',
+            partnerName: 'WD23 Demo Partner',
+            ownerName: 'Demo Owner',
+            mobile: '+920000000001',
+            status: PartnerStatus.ACTIVE,
+            commissionType: CommissionType.PERCENTAGE,
+            approvedAt: new Date(),
+        },
+        create: {
+            academyName: 'WhiteDavid23 Demo Academy',
+            partnerName: 'WD23 Demo Partner',
+            ownerName: 'Demo Owner',
+            email: DEMO_PARTNER_EMAIL,
+            mobile: '+920000000001',
+            status: PartnerStatus.ACTIVE,
+            commissionType: CommissionType.PERCENTAGE,
+            approvedAt: new Date(),
+        },
+    });
+
+    return partner.id;
+}
+
+async function seedDemoCourse(): Promise<string> {
+    const existing = await prisma.course.findFirst({
+        where: { title: DEMO_COURSE_TITLE },
+        select: { id: true },
+    });
+
+    if (existing) {
+        await prisma.course.update({
+            where: { id: existing.id },
+            data: {
+                fee: DEMO_COURSE_FEE,
+                duration: '6 months',
+                status: CourseStatus.ACTIVE,
+                description: 'Seeded demo course for local QA admission flows.',
+            },
+        });
+        return existing.id;
+    }
+
+    const created = await prisma.course.create({
+        data: {
+            title: DEMO_COURSE_TITLE,
+            description: 'Seeded demo course for local QA admission flows.',
+            duration: '6 months',
+            fee: DEMO_COURSE_FEE,
+            status: CourseStatus.ACTIVE,
+        },
+    });
+
+    return created.id;
+}
+
+async function seedDemoCommissionRule(courseId: string): Promise<void> {
+    const existing = await prisma.commissionRule.findFirst({
+        where: { courseId },
+        select: { id: true },
+    });
+
+    if (existing) {
+        await prisma.commissionRule.update({
+            where: { id: existing.id },
+            data: {
+                commissionType: CommissionType.PERCENTAGE,
+                rate: DEMO_COMMISSION_RATE,
+            },
+        });
+        return;
+    }
+
+    await prisma.commissionRule.create({
+        data: {
+            courseId,
+            commissionType: CommissionType.PERCENTAGE,
+            rate: DEMO_COMMISSION_RATE,
+        },
+    });
+}
+
+async function seedQaUser(opts: {
+    email: string;
+    password: string;
+    name: string;
+    roleName: RoleName;
+    partnerId: string | null;
+    roleMap: Map<RoleName, string>;
+}): Promise<void> {
+    const roleId = opts.roleMap.get(opts.roleName);
+    if (!roleId) {
+        throw new Error(`${opts.roleName} role not found — aborting seed`);
+    }
+
+    // QA accounts intentionally reset passwordHash on every seed.
+    const passwordHash = await bcrypt.hash(opts.password, 10);
+
+    await prisma.user.upsert({
+        where: { email: opts.email },
+        update: {
+            name: opts.name,
+            roleId,
+            partnerId: opts.partnerId,
+            passwordHash,
+            status: UserStatus.ACTIVE,
+        },
+        create: {
+            email: opts.email,
+            name: opts.name,
+            roleId,
+            partnerId: opts.partnerId,
+            passwordHash,
+            status: UserStatus.ACTIVE,
+        },
+    });
+}
+
 async function main(): Promise<void> {
     console.log('[seed] starting...');
 
@@ -221,6 +371,33 @@ async function main(): Promise<void> {
 
     await seedSuperAdmin(roleMap);
     console.log(`[seed] super admin: ${SUPER_ADMIN_EMAIL}`);
+
+    const partnerId = await seedDemoPartner();
+    console.log(`[seed] demo partner: ${DEMO_PARTNER_EMAIL}`);
+
+    const courseId = await seedDemoCourse();
+    await seedDemoCommissionRule(courseId);
+    console.log(`[seed] demo course + 10% commission rule: ${DEMO_COURSE_TITLE}`);
+
+    await seedQaUser({
+        ...QA_PARTNER_ADMIN,
+        roleName: RoleName.PARTNER_ADMIN,
+        partnerId,
+        roleMap,
+    });
+    await seedQaUser({
+        ...QA_COUNSELOR,
+        roleName: RoleName.COUNSELOR,
+        partnerId,
+        roleMap,
+    });
+    await seedQaUser({
+        ...QA_SUPPORT,
+        roleName: RoleName.SUPPORT,
+        partnerId: null,
+        roleMap,
+    });
+    console.log('[seed] QA users: partner / counselor / support presets ready');
 
     console.log('[seed] done.');
 }

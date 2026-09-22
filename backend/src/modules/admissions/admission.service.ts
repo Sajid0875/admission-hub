@@ -27,6 +27,8 @@ import {
     NotFoundError,
 } from '../../shared/errors/AppError.js';
 import type { ScopeUser } from '../../shared/utils/scope.js';
+import { AuditAction, logAction } from '../../shared/utils/audit.js';
+import { NotificationType, notify } from '../../shared/utils/notify.js';
 import {
     ActivityType,
     LeadStatus,
@@ -435,6 +437,25 @@ export const createAdmission = async (
         'admission created',
     );
 
+    void logAction({
+        actorId: actor.id,
+        partnerId: lead.partnerId,
+        action: AuditAction.ADMISSION_CREATED,
+        entityType: 'admission',
+        entityId: created.id,
+        newValue: { leadId: lead.id, courseId: course.id, fee: input.fee },
+    });
+
+    void notify({
+        userId: actor.id,
+        partnerId: lead.partnerId,
+        type: NotificationType.ADMISSION_CREATED,
+        title: 'Admission created',
+        message: `Admission created for ${input.studentName ?? lead.name}.`,
+        referenceType: 'admission',
+        referenceId: created.id,
+    });
+
     return toSafeAdmission(created, 0);
 };
 
@@ -571,6 +592,31 @@ export const verifyAdmission = async (
         },
         'admission verification updated',
     );
+
+    void logAction({
+        actorId: actor.id,
+        partnerId: existing.partnerId,
+        action:
+            input.verificationStatus === VerificationStatus.VERIFIED
+                ? AuditAction.ADMISSION_VERIFIED
+                : AuditAction.ADMISSION_UPDATED,
+        entityType: 'admission',
+        entityId: admissionId,
+        oldValue: { verificationStatus: existing.verificationStatus },
+        newValue: { verificationStatus: input.verificationStatus },
+    });
+
+    if (input.verificationStatus === VerificationStatus.VERIFIED) {
+        void notify({
+            userId: actor.id,
+            partnerId: existing.partnerId,
+            type: NotificationType.ADMISSION_VERIFIED,
+            title: 'Admission verified',
+            message: 'Admission verified — commission record generated if applicable.',
+            referenceType: 'admission',
+            referenceId: admissionId,
+        });
+    }
 
     return toSafeAdmission(updated, amountPaid);
 };

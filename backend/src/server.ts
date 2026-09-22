@@ -21,9 +21,8 @@ import { prisma } from './config/prisma.js';
 const startServer = async (): Promise<void> => {
     const app = createApp();
 
-    let server: Server;
-    try {
-        server = app.listen(env.PORT, () => {
+    const server: Server = await new Promise((resolve, reject) => {
+        const s = app.listen(env.PORT, () => {
             logger.info(
                 {
                     port: env.PORT,
@@ -32,11 +31,20 @@ const startServer = async (): Promise<void> => {
                 },
                 'server started',
             );
+            resolve(s);
         });
-    } catch (err) {
-        logger.fatal({ err }, 'failed to start server');
-        process.exit(1);
-    }
+
+        // listen() does not throw synchronously for EADDRINUSE — it emits 'error'.
+        s.once('error', (err: NodeJS.ErrnoException) => {
+            if (err.code === 'EADDRINUSE') {
+                logger.fatal(
+                    { err, port: env.PORT },
+                    `port ${env.PORT} is already in use — stop the other process (lsof -i :${env.PORT}) or change PORT`,
+                );
+            }
+            reject(err);
+        });
+    });
 
     // --- Graceful shutdown ---
     const shutdown = async (signal: string): Promise<void> => {
@@ -48,6 +56,17 @@ const startServer = async (): Promise<void> => {
         }, 10_000);
 
         forceTimer.unref();
+
+        // Only close if the server actually bound successfully
+        if (!server.listening) {
+            try {
+                await prisma.$disconnect();
+            } catch {
+                /* ignore */
+            }
+            process.exit(1);
+            return;
+        }
 
         server.close(async (err) => {
             if (err) {

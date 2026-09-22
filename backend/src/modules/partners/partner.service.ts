@@ -24,6 +24,8 @@ import {
     NotFoundError,
 } from '../../shared/errors/AppError.js';
 import type { ScopeUser } from '../../shared/utils/scope.js';
+import { AuditAction, logAction } from '../../shared/utils/audit.js';
+import { NotificationType, notify } from '../../shared/utils/notify.js';
 import {
     PartnerStatus,
     CommissionType,
@@ -251,6 +253,15 @@ export const createPartner = async (
         'partner created (pending approval)',
     );
 
+    void logAction({
+        actorId: actor.id,
+        partnerId: created.id,
+        action: AuditAction.PARTNER_CREATED,
+        entityType: 'partner',
+        entityId: created.id,
+        newValue: { status: created.status, email: created.email },
+    });
+
     return toSafePartner(created);
 };
 
@@ -331,6 +342,50 @@ export const changePartnerStatus = async (
         },
         'partner status changed',
     );
+
+    const statusAction =
+        input.status === PartnerStatus.ACTIVE
+            ? AuditAction.PARTNER_APPROVED
+            : input.status === PartnerStatus.SUSPENDED
+              ? AuditAction.PARTNER_SUSPENDED
+              : input.status === PartnerStatus.REJECTED
+                ? AuditAction.PARTNER_REJECTED
+                : AuditAction.PARTNER_UPDATED;
+
+    void logAction({
+        actorId: actor.id,
+        partnerId,
+        action: statusAction,
+        entityType: 'partner',
+        entityId: partnerId,
+        oldValue: { status: existing.status },
+        newValue: { status: input.status },
+    });
+
+    // Notify partner admins when approved
+    if (approvingNow) {
+        void (async () => {
+            const admins = await prisma.user.findMany({
+                where: {
+                    partnerId,
+                    status: 'ACTIVE',
+                    role: { name: 'PARTNER_ADMIN' },
+                },
+                select: { id: true },
+            });
+            for (const admin of admins) {
+                void notify({
+                    userId: admin.id,
+                    partnerId,
+                    type: NotificationType.PARTNER_APPROVED,
+                    title: 'Partner approved',
+                    message: 'Your partner workspace is now active.',
+                    referenceType: 'partner',
+                    referenceId: partnerId,
+                });
+            }
+        })();
+    }
 
     return toSafePartner(updated);
 };

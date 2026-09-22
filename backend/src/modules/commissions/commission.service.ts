@@ -21,6 +21,8 @@ import {
     NotFoundError,
 } from '../../shared/errors/AppError.js';
 import type { ScopeUser } from '../../shared/utils/scope.js';
+import { AuditAction, logAction } from '../../shared/utils/audit.js';
+import { NotificationType, notify } from '../../shared/utils/notify.js';
 import { CommissionStatus } from '@prisma/client';
 import type {
     ChangeCommissionStatusInput,
@@ -239,6 +241,56 @@ export const changeCommissionStatus = async (
         },
         'commission status changed',
     );
+
+    const auditAction =
+        input.status === CommissionStatus.APPROVED
+            ? AuditAction.COMMISSION_APPROVED
+            : input.status === CommissionStatus.PAID
+              ? AuditAction.COMMISSION_PAID
+              : AuditAction.PAYOUT_APPROVED;
+
+    void logAction({
+        actorId: actor.id,
+        partnerId: updated.partnerId,
+        action: auditAction,
+        entityType: 'commission',
+        entityId: commissionId,
+        oldValue: { status: existing.status },
+        newValue: { status: input.status },
+    });
+
+    if (
+        input.status === CommissionStatus.APPROVED ||
+        input.status === CommissionStatus.PAID
+    ) {
+        void (async () => {
+            const admins = await prisma.user.findMany({
+                where: {
+                    partnerId: updated.partnerId,
+                    status: 'ACTIVE',
+                    role: { name: 'PARTNER_ADMIN' },
+                },
+                select: { id: true },
+            });
+            for (const admin of admins) {
+                void notify({
+                    userId: admin.id,
+                    partnerId: updated.partnerId,
+                    type:
+                        input.status === CommissionStatus.PAID
+                            ? NotificationType.COMMISSION_PAID
+                            : NotificationType.COMMISSION_APPROVED,
+                    title:
+                        input.status === CommissionStatus.PAID
+                            ? 'Commission paid'
+                            : 'Commission approved',
+                    message: `Commission ${commissionId} is now ${input.status}.`,
+                    referenceType: 'commission',
+                    referenceId: commissionId,
+                });
+            }
+        })();
+    }
 
     return toSafeRecord(updated);
 };

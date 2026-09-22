@@ -31,6 +31,7 @@ import {
     assertCanAccessPartner,
     type ScopeUser,
 } from '../../shared/utils/scope.js';
+import { AuditAction, logAction } from '../../shared/utils/audit.js';
 import type {
     ChangeRoleInput,
     ChangeStatusInput,
@@ -290,6 +291,15 @@ export const createUser = async (
         'user created',
     );
 
+    void logAction({
+        actorId: actor.id,
+        partnerId: targetPartnerId,
+        action: AuditAction.USER_CREATED,
+        entityType: 'user',
+        entityId: created.id,
+        newValue: { email: created.email, role: input.role },
+    });
+
     return {
         user: toSafeUser(created),
         temporaryPassword,
@@ -366,6 +376,15 @@ export const changeStatus = async (
         { actorId: actor.id, userId, newStatus: input.status },
         'user status changed',
     );
+
+    void logAction({
+        actorId: actor.id,
+        partnerId: updated.partnerId,
+        action: AuditAction.USER_STATUS_CHANGED,
+        entityType: 'user',
+        entityId: userId,
+        newValue: { status: input.status },
+    });
 
     return toSafeUser(updated);
 };
