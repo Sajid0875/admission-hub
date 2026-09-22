@@ -10,6 +10,8 @@
  *   - Get admission by id        (GET /admissions/:id)
  *   - List payments              (GET /admissions/:id/payments)
  *   - Record payment             (POST /admissions/:id/payments)
+ *   - Initiate gateway payment   (POST /admissions/:id/payments/initiate)
+ *   - Confirm gateway payment    (POST /admissions/:id/payments/confirm)
  *   - Refund payment             (POST /admissions/:id/payments/:paymentId/refund)
  *
  * Notes:
@@ -65,6 +67,7 @@ const ALLOWED_PAYMENT_MODES = [
     'CARD',
     'BANK_TRANSFER',
     'CHEQUE',
+    'GATEWAY',
     'OTHER',
 ] as const;
 
@@ -154,6 +157,29 @@ export const RecordPaymentSchema = z.object({
 });
 
 export type RecordPaymentInput = z.infer<typeof RecordPaymentSchema>;
+
+// --------------------------------------------------
+// Gateway checkout (initiate / confirm)
+// --------------------------------------------------
+
+export const InitiateGatewayPaymentSchema = z.object({
+    amount: paymentAmountSchema.optional(), // defaults to remaining balance
+});
+
+export type InitiateGatewayPaymentInput = z.infer<
+    typeof InitiateGatewayPaymentSchema
+>;
+
+export const ConfirmGatewayPaymentSchema = z.object({
+    orderId: z.string().min(1).max(200),
+    paymentId: z.string().min(1).max(200),
+    intentToken: z.string().min(1).max(4000),
+    signature: z.string().min(1).max(500).optional(),
+});
+
+export type ConfirmGatewayPaymentInput = z.infer<
+    typeof ConfirmGatewayPaymentSchema
+>;
 
 // --------------------------------------------------
 // Refund payment

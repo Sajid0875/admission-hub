@@ -246,4 +246,76 @@ export const admissionService = {
       return localAdmissionsStore[idx];
     }
   },
+
+  /**
+   * Gateway checkout: initiate order, then confirm.
+   * Stub provider auto-confirms with a synthetic payment id.
+   * Razorpay returns order details for client Checkout (signature required).
+   */
+  async collectViaGateway(
+    admissionId: string,
+    amount?: number
+  ): Promise<{ admission: Admission; provider: string; orderId: string }> {
+    try {
+      const initRes = await apiClient.getRawInstance().post<{
+        order: {
+          provider: string;
+          orderId: string;
+          amount: number;
+          currency: string;
+          keyId: string;
+          intentToken: string;
+        };
+      }>(`/admissions/${admissionId}/payments/initiate`, amount != null ? { amount } : {});
+
+      const order = initRes.data.order;
+
+      if (order.provider === "razorpay") {
+        // Live Razorpay Checkout is out of band — return order for host page.
+        throw Object.assign(
+          new Error(
+            `Razorpay order ${order.orderId} created. Complete Checkout with key ${order.keyId}, then POST /payments/confirm with signature.`
+          ),
+          { code: "RAZORPAY_CHECKOUT_REQUIRED", order }
+        );
+      }
+
+      // Stub: confirm immediately with a synthetic payment id
+      const paymentId = `stub_pay_${Date.now().toString(36)}`;
+      const confirmRes = await apiClient.getRawInstance().post<{
+        admission: unknown;
+      }>(`/admissions/${admissionId}/payments/confirm`, {
+        orderId: order.orderId,
+        paymentId,
+        intentToken: order.intentToken,
+      });
+
+      return {
+        admission: mapBackendAdmission(confirmRes.data.admission ?? confirmRes.data),
+        provider: order.provider,
+        orderId: order.orderId,
+      };
+    } catch (err: unknown) {
+      if (!shouldUseMockFallback(err)) throw err;
+      const idx = localAdmissionsStore.findIndex((a) => a.id === admissionId);
+      if (idx === -1) throw err;
+      const remaining =
+        localAdmissionsStore[idx].fee - localAdmissionsStore[idx].amountPaid;
+      const pay = amount != null ? Math.min(amount, remaining) : remaining;
+      localAdmissionsStore[idx] = {
+        ...localAdmissionsStore[idx],
+        amountPaid: localAdmissionsStore[idx].amountPaid + pay,
+        paymentMode: "gateway",
+        paymentStatus:
+          localAdmissionsStore[idx].amountPaid + pay >= localAdmissionsStore[idx].fee
+            ? "full"
+            : "partial",
+      };
+      return {
+        admission: localAdmissionsStore[idx],
+        provider: "stub",
+        orderId: `stub_order_mock_${Date.now()}`,
+      };
+    }
+  },
 };

@@ -60,6 +60,17 @@ const EnvSchema = z.object({
     WHATSAPP_TWILIO_AUTH_TOKEN: z.string().default(''),
     // E.164 or whatsapp:+E164 — sandbox or approved business sender
     WHATSAPP_TWILIO_FROM: z.string().default(''),
+
+    // Online payment gateway (stub by default; Razorpay when enabled + keys set)
+    PAYMENT_GATEWAY_ENABLED: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((v) => v === 'true'),
+    PAYMENT_GATEWAY_PROVIDER: z.enum(['stub', 'razorpay']).default('stub'),
+    RAZORPAY_KEY_ID: z.string().default(''),
+    RAZORPAY_KEY_SECRET: z.string().default(''),
+    // Optional dedicated secret for intent HMAC; falls back to JWT_SECRET
+    PAYMENT_INTENT_SECRET: z.string().default(''),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

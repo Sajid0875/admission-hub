@@ -36,9 +36,12 @@ import {
     VerificationStatus,
 } from '@prisma/client';
 import { resolveCommissionRate } from '../commissions/commission-rule.service.js';
+import { paymentGateway } from '../../shared/payments/paymentGateway.js';
 import type {
     CancelAdmissionInput,
+    ConfirmGatewayPaymentInput,
     CreateAdmissionInput,
+    InitiateGatewayPaymentInput,
     ListAdmissionsQuery,
     ListPaymentsQuery,
     RecordPaymentInput,
@@ -723,6 +726,129 @@ export const recordPayment = async (
         payment: toSafePayment(payment),
         admission: toSafeAdmission(refreshedAdmission, newAmountPaid),
     };
+};
+
+// --------------------------------------------------
+// Gateway checkout — initiate order
+// --------------------------------------------------
+
+export const initiateGatewayPayment = async (
+    actor: ScopeUser,
+    admissionId: string,
+    input: InitiateGatewayPaymentInput,
+) => {
+    await loadAdmissionForActor(actor, admissionId);
+
+    const admission = await prisma.admission.findUniqueOrThrow({
+        where: { id: admissionId },
+    });
+
+    if (admission.verificationStatus === VerificationStatus.REJECTED) {
+        throw BadRequestError('Cannot collect payment for a rejected admission');
+    }
+
+    const existingPayments = await prisma.payment.findMany({
+        where: { admissionId },
+        select: { amount: true, status: true },
+    });
+    const { amountPaid } = computePaymentStatus(
+        Number(admission.fee),
+        existingPayments,
+    );
+    const remaining = Number(admission.fee) - amountPaid;
+
+    if (remaining <= 0) {
+        throw BadRequestError('Admission is already fully paid');
+    }
+
+    const amount = input.amount ?? remaining;
+    if (amount > remaining) {
+        throw BadRequestError(
+            `Payment amount (${amount}) exceeds remaining balance (${remaining})`,
+        );
+    }
+
+    const order = await paymentGateway.createOrder({
+        admissionId,
+        amount,
+        currency: 'INR',
+        receipt: admissionId.slice(0, 40),
+        notes: { actorId: actor.id },
+    });
+
+    logger.info(
+        {
+            actorId: actor.id,
+            admissionId,
+            orderId: order.orderId,
+            amount,
+            provider: order.provider,
+        },
+        'gateway payment initiated',
+    );
+
+    return order;
+};
+
+// --------------------------------------------------
+// Gateway checkout — confirm + record payment
+// --------------------------------------------------
+
+export const confirmGatewayPayment = async (
+    actor: ScopeUser,
+    admissionId: string,
+    input: ConfirmGatewayPaymentInput,
+): Promise<{ payment: SafePayment; admission: SafeAdmission }> => {
+    await loadAdmissionForActor(actor, admissionId);
+
+    const verified = await paymentGateway.verifyPayment({
+        orderId: input.orderId,
+        paymentId: input.paymentId,
+        signature: input.signature,
+        intentToken: input.intentToken,
+    });
+
+    if (!verified.ok) {
+        throw BadRequestError(
+            `Gateway payment verification failed: ${verified.reason ?? 'unknown'}`,
+        );
+    }
+
+    if (verified.admissionId !== admissionId) {
+        throw BadRequestError('Payment intent does not match this admission');
+    }
+
+    // Idempotent: same gateway payment id already recorded
+    const existing = await prisma.payment.findFirst({
+        where: {
+            admissionId,
+            transactionReference: verified.paymentId,
+        },
+    });
+    if (existing) {
+        const admission = await prisma.admission.findUniqueOrThrow({
+            where: { id: admissionId },
+        });
+        const payments = await prisma.payment.findMany({
+            where: { admissionId },
+            select: { amount: true, status: true },
+        });
+        const { amountPaid } = computePaymentStatus(
+            Number(admission.fee),
+            payments,
+        );
+        return {
+            payment: toSafePayment(existing),
+            admission: toSafeAdmission(admission, amountPaid),
+        };
+    }
+
+    return recordPayment(actor, admissionId, {
+        amount: verified.amount,
+        paymentMode: 'GATEWAY',
+        transactionReference: verified.paymentId,
+        status: PaymentStatus.PAID,
+    });
 };
 
 // --------------------------------------------------
