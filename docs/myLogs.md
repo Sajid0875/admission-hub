@@ -784,6 +784,7 @@ Refresh tokens (login issues hashed refresh; `/auth/refresh` rotation; `/auth/lo
 PR #7 merged to `main`. OpenAPI deepened to full route surface (v1.1.0, 57 paths / 76 ops): **23 Sep 2026**.
 PR #8 merged to `main` (OpenAPI deepen): **23 Sep 2026**.
 PDF export for leads/admissions (`format=pdf` on `/reports/export`): **23 Sep 2026**.
+PR #9 merged to `main` (PDF export): **23 Sep 2026**.
 
 ---
 
@@ -802,9 +803,10 @@ PDF export for leads/admissions (`format=pdf` on `/reports/export`): **23 Sep 20
 - Swagger UI at `/api/v1/docs` picks this up automatically (static JSON)
 - Commit: `1cbc46f` → merged via PR #8
 
-### PDF report export (this commit → PR)
+### PDF report export (PR #9 merged)
 - `GET /reports/export?report=leads|admissions&format=csv|pdf` (default csv, backward compatible)
 - Zero-dep PDF table builder (`shared/utils/pdfTable.ts`) — no new npm packages
 - FE Reports page: Leads/Admissions CSV + PDF buttons
 - Unit tests: `pdfTable.test.ts` **4/4 pass**; service PDF case added (needs DB)
 - OpenAPI export docs updated for `format` + `application/pdf`
+- Commit: `dde77e4` → merged via PR #9
