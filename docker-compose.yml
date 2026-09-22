@@ -4,13 +4,18 @@
 #   docker compose up --build
 #   open http://localhost:3000
 #   API http://localhost:4000/health
+#   Docs http://localhost:4000/api/v1/docs
+#
+# Full guide: docs/GETTING_STARTED.md
+# Production (Railway): docs/DEPLOY.md
 #
 # QA logins (from prisma seed):
 #   admin@whitedavid23.local / ChangeMe!Adm1n2026
 #   partner@whitedavid23.com / ChangeMe!Partner2026
 #   counselor@whitedavid23.com / ChangeMe!Counselor2026
 #   support@whitedavid23.com / ChangeMe!Support2026
-
+#
+# Secrets for host deploys live in Railway / local/ (gitignored) — not in this file.
 services:
   postgres:
     image: postgres:16-alpine

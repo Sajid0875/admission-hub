@@ -11,6 +11,10 @@
 *.woff binary
 *.woff2 binary
 
+# Env / secret-ish text — treat as text, but never commit real .env (see .gitignore)
+.env.example text eol=lf
+.env.test text eol=lf
+
 # Windows-only scripts should stay CRLF.
 *.bat text eol=crlf
 *.cmd text eol=crlf

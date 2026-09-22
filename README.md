@@ -1,28 +1,52 @@
 # Admission Hub
 
-Multi-tenant partner admissions CRM and reporting platform for WhiteDavid23 Academy.
+Multi-tenant partner admissions CRM for **WhiteDavid23 Academy**.
 
-## Layout
+| | |
+|---|---|
+| **Monorepo** | `backend/` Express + Prisma + PostgreSQL · `frontend/` Next.js |
+| **Live** | [Railway](https://railway.app) — [UI](https://web-production-e4c95.up.railway.app) · [API](https://api-production-f7fb.up.railway.app) |
+| **Clone & run** | **[docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)** |
+| **Deploy again** | **[docs/DEPLOY.md](docs/DEPLOY.md)** |
+| **Dev log** | [docs/myLogs.md](docs/myLogs.md) |
+| **Local secrets** | [local/README.md](local/README.md) (gitignored copies) |
 
-```text
-admission-hub/
-├── backend/           # Express + Prisma + PostgreSQL API (:4000)
-├── frontend/          # Next.js App Router UI (:3000)
-├── docs/              # Specs, handover, and engineering logs
-└── docker-compose.yml # One-command local stack
-```
+---
 
-## Quick start (Docker)
+## Quick start (choose one)
+
+### Docker (one command)
 
 ```bash
+git clone https://github.com/Sajid0875/admission-hub.git
+cd admission-hub
 docker compose up --build
 ```
 
-- UI: http://localhost:3000  
-- API health: http://localhost:4000/health  
-- OpenAPI: http://localhost:4000/api/v1/docs  
+- UI http://localhost:3000 · API http://localhost:4000/health · Docs http://localhost:4000/api/v1/docs
 
-Seeded QA logins:
+### Local Node
+
+```bash
+# secrets (never commit)
+cp local/backend.env.example local/backend.env
+cp local/frontend.env.local.example local/frontend.env.local
+# set JWT_SECRET in local/backend.env  (openssl rand -hex 32)
+cp local/backend.env backend/.env
+cp local/frontend.env.local frontend/.env.local
+
+# API
+cd backend && npm install && ./node_modules/.bin/prisma migrate dev && npm run prisma:seed && npm run dev
+
+# UI (other terminal)
+cd frontend && npm install && npm run dev
+```
+
+Full walkthrough: [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md).
+
+---
+
+## QA logins (seed)
 
 | Role | Email | Password |
 |---|---|---|
@@ -31,69 +55,63 @@ Seeded QA logins:
 | Counselor | `counselor@whitedavid23.com` | `ChangeMe!Counselor2026` |
 | Support | `support@whitedavid23.com` | `ChangeMe!Support2026` |
 
-Stop with `docker compose down`. Add `-v` to also drop the Postgres volume.
+---
 
-## Quick start (local Node)
+## Layout
 
-```bash
-# Backend
-cd backend
-cp .env.example .env   # set DATABASE_URL + JWT_SECRET
-npm install
-npx prisma migrate dev
-npm run prisma:seed
-npm run dev
-
-# Frontend (separate terminal)
-cd frontend
-cp .env.example .env.local   # NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
-npm install
-npm run dev
+```text
+admission-hub/
+├── backend/            # API :4000
+├── frontend/           # UI :3000
+├── docs/               # Specs, GETTING_STARTED, DEPLOY, myLogs
+├── local/              # Operator env templates + gitignored secrets
+├── docker-compose.yml  # Postgres + API + FE
+└── render.yaml         # Optional Render Blueprint (alt to Railway)
 ```
+
+---
 
 ## Tests
 
 ```bash
-# Backend unit/service tests (needs admission_hub_test DB)
-cd backend && npm test
-
-# Live API E2E (API must be running on :4000)
-cd backend && npm run test:e2e
-
-# Frontend mock smoke
+cd backend && npm run test:db:setup && npm test
+cd backend && npm run test:e2e          # API on :4000
 cd frontend && npm run test:smoke
 ```
 
-## Auth tokens
+---
 
-Login returns a short-lived JWT (`token`) plus an opaque `refreshToken` (hashed in DB).  
-`POST /api/v1/auth/refresh` rotates the pair; `POST /api/v1/auth/logout` revokes the refresh token.  
-Defaults: access `15m`, refresh `30d` (`JWT_EXPIRES_IN` / `JWT_REFRESH_EXPIRES_IN`).
+## Auth
 
-Interactive API docs: http://localhost:4000/api/v1/docs (OpenAPI JSON: `/api/v1/openapi.json`).
+Login returns short-lived `token` + opaque `refreshToken`.  
+`POST /api/v1/auth/refresh` rotates; `POST /api/v1/auth/logout` revokes.  
+Defaults: access `15m`, refresh `30d`.
 
-## Production deploy
+---
 
-See [docs/DEPLOY.md](docs/DEPLOY.md) — Vercel (FE) + Render Blueprint (API + Postgres) from `render.yaml`.
+## Production (Railway)
 
-## WhatsApp
+Already shipped. To reproduce or recreate: **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 
-Follow-up reminders can fan out WhatsApp text via an adapter:
+| | URL |
+|---|---|
+| UI | https://web-production-e4c95.up.railway.app |
+| API | https://api-production-f7fb.up.railway.app |
+| Health | https://api-production-f7fb.up.railway.app/health |
+| Swagger | https://api-production-f7fb.up.railway.app/api/v1/docs |
 
-- Default: `WHATSAPP_PROVIDER=stub` (logs only; safe for local/CI)
-- Meta: `WHATSAPP_ENABLED=true`, `WHATSAPP_PROVIDER=meta`, plus `WHATSAPP_META_ACCESS_TOKEN` and `WHATSAPP_META_PHONE_NUMBER_ID`
-- Twilio: `WHATSAPP_ENABLED=true`, `WHATSAPP_PROVIDER=twilio`, plus `WHATSAPP_TWILIO_ACCOUNT_SID`, `WHATSAPP_TWILIO_AUTH_TOKEN`, and `WHATSAPP_TWILIO_FROM`
+Secrets live in the Railway dashboard (and optionally under gitignored `local/`). Do **not** commit `.env` files.
 
-Missing live credentials fall back to the stub with a warning.
+---
 
-## Roles
+## Integrations (optional)
 
-- Super Admin
-- Partner Admin
-- Counselor / Team Member
-- Support
+- **WhatsApp:** stub default; Meta/Twilio via env — see `backend/.env.example`
+- **Payments:** stub gateway default; Razorpay when enabled + keys
 
-## Docs
+---
+
+## Specs
 
 - [Developer Handover Pack](docs/developer-handover-pack.pdf)
 - [Software Requirements Specification](docs/software-requirements-specification.pdf)

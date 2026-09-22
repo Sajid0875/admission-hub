@@ -1,20 +1,36 @@
-### Ignore case ###
-.agents
-.cursor
-.env
+# Secrets, local env copies, and machine-specific notes
+# Never commit real credentials — only README + *.example are tracked.
 
+local/*
+!local/README.md
+!local/**/*.example
+!local/**/*.example.md
+
+# Environment files (keep *.example and backend/.env.test tracked)
+.env
+.env.local
+.env.*.local
+**/.env
+!**/.env.example
+!**/.env.test
+
+# Dependencies / build
 node_modules/
 dist/
+build/
 .next/
 *.log
 *.tsbuildinfo
 .DS_Store
+coverage/
 
-.env
-.env.local
-.env.*.local
-
-# Nested frontend tooling / generated analysis (keep out of monorepo)
+# Nested frontend tooling / generated analysis
 frontend/graphify-out/
 frontend/Partner_Portal_Frontend_Phase_Prompts.pdf
 frontend/stitch_nexus_admission_crm/
+
+# Editor / agent caches (optional local)
+.agents/
+.cursor/
+.vercel/
+.railway/

@@ -1,4 +1,5 @@
-# Render Blueprint — API web service
+# Render Blueprint — optional alternative to Railway production
+# Current live platform: Railway (see docs/DEPLOY.md)
 # Docs: https://render.com/docs/blueprint-spec
 #
 # Postgres: Render no longer offers a free DB. Options:
@@ -6,7 +7,7 @@
 #   B) Use Neon (https://neon.tech) free tier → set DATABASE_URL on this service.
 #
 # Deploy: Render Dashboard → New → Blueprint → select this repo (main).
-# Then deploy FE on Vercel (see docs/DEPLOY.md) and set CLIENT_URL here.
+# Then deploy FE on Vercel (see docs/DEPLOY.md §C) and set CLIENT_URL here.
 
 services:
   - type: web

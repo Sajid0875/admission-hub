@@ -1,28 +1,34 @@
-# Admission Hub
+# Admission Hub — Frontend
 
-Development repository for Admission Hub, a partner admissions CRM and reporting platform.
+Next.js UI for the WhiteDavid23 Academy partner admissions CRM.
 
-The planned product is a responsive, multi-tenant admissions CRM for super admins, partner admins, counselors, and support users. Its scope includes lead and follow-up management, admissions, courses, marketing assets, commissions, reporting, notifications, and audit logs.
+This folder is part of the monorepo at the repo root. Prefer root docs for clone / run / deploy.
 
-## Project documents
+| Doc | Purpose |
+|---|---|
+| [../docs/GETTING_STARTED.md](../docs/GETTING_STARTED.md) | Clone → env → run |
+| [../docs/DEPLOY.md](../docs/DEPLOY.md) | Railway production |
+| [../README.md](../README.md) | Monorepo overview + live URLs |
+| [../local/README.md](../local/README.md) | Local secrets (gitignored) |
 
-- [Developer Handover Pack](docs/developer-handover-pack.pdf)
-- [Software Requirements Specification](docs/software-requirements-specification.pdf)
+## Local run
 
-## Suggested MVP
+```bash
+# From repo root — copy secrets first
+cp local/frontend.env.local.example local/frontend.env.local
+cp local/frontend.env.local .env.local
 
-- Role-based authentication and tenant isolation
-- Partner dashboard
-- Lead and follow-up management
-- Admissions and courses
-- Commissions
-- Reports and notifications
+npm install
+npm run dev   # http://localhost:3000
+```
 
-## Suggested technology stack
+`NEXT_PUBLIC_API_URL` must point at the API (`http://localhost:4000/api/v1` locally).
 
-- `Frontend`: React or Next.js with Tailwind CSS
-- `Backend`: Node.js with Express
-- `Database`: PostgreSQL or MongoDB
-- `Authentication`: JWT with role-based access control
+## Production
 
-Implementation has not started yet. The documents in `docs/` are the source of truth for product scope and acceptance criteria.
+Shipped on Railway as service `web` (Dockerfile, root directory `frontend/`).  
+Public UI: https://web-production-e4c95.up.railway.app
+
+## QA logins
+
+Same seed users as the API — see root README or `docs/GETTING_STARTED.md`.

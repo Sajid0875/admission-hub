@@ -19,10 +19,30 @@
 - **Project Name**: WhiteDavid23 Academy Admission Hub — Backend System
 - **Repository Path**: `~/Desktop/WhiteDavid23Academy_Workspace/admission-hub/backend`
 - **Git Remote**: `https://github.com/Sajid0875/admission-hub`
-- **Git Branch**: `dev_Sohaim`
+- **Git Branch**: `main` (feature work historically on `dev_Sohaim`)
 - **Developer Identity**: `s0a1m0x01` (`cx3eno@gmail.com`)
 - **Workspace**: `admission-hub/` (monorepo) — backend lives in `backend/`, frontend in `frontend/`
-- **Status**: **Backend MVP COMPLETE** (244 tests) + **Full Stack Integration COMPLETE** (22–23 Sep 2026) + **Hardening + Phase-3 reminders** + **commissions summary** (23 Sep 2026)
+- **Status**: **Backend MVP COMPLETE** + **Full Stack Integration COMPLETE** + **Phase-3 adapters** + **Production on Railway (23 Sep 2026)**
+
+### Operator quick links
+
+| Doc | Purpose |
+|---|---|
+| [GETTING_STARTED.md](./GETTING_STARTED.md) | Clone → env → run (Docker or Node) |
+| [DEPLOY.md](./DEPLOY.md) | Ship / recreate on **Railway** |
+| [../local/README.md](../local/README.md) | Local secrets folder (gitignored copies) |
+| [../README.md](../README.md) | Repo overview + live URLs |
+
+### Live production (Railway)
+
+| | |
+|---|---|
+| UI | https://web-production-e4c95.up.railway.app |
+| API | https://api-production-f7fb.up.railway.app |
+| Health | https://api-production-f7fb.up.railway.app/health |
+| Swagger | https://api-production-f7fb.up.railway.app/api/v1/docs |
+
+Secrets stay in Railway dashboard + gitignored `local/` — never commit `.env`.
 
 ---
 
@@ -38,6 +58,7 @@
 - **Security**: Helmet, CORS, OWASP guidance
 - **Testing**: Vitest + isolated test DB
 - **Dev Runner**: tsx
+- **Production host**: Railway (Postgres + API Docker + FE Docker)
 - **Frontend Framework**: Next.js 14 (App Router) + React 18
 - **Frontend State / Data**: Zustand + TanStack Query
 - **Frontend Styling**: Tailwind CSS
@@ -794,7 +815,9 @@ Twilio WhatsApp provider (`WHATSAPP_PROVIDER=twilio`): **23 Sep 2026**.
 PR #11 merged to `main` (Twilio WhatsApp): **23 Sep 2026**.
 Payment gateway (stub + Razorpay initiate/confirm): **23 Sep 2026**.
 PR #12 merged to `main` (payment gateway): **23 Sep 2026**.
-Deploy prep (Render Blueprint + Vercel FE guide): **23 Sep 2026**.
+Deploy prep (Render Blueprint + docs): **23 Sep 2026**.
+PR #13 merged; **Railway production live** (Postgres + api + web): **23 Sep 2026**.
+Docs pass (GETTING_STARTED / DEPLOY / local secrets): **23 Sep 2026**.
 
 ---
 
@@ -846,7 +869,24 @@ Deploy prep (Render Blueprint + Vercel FE guide): **23 Sep 2026**.
 - Env: `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / optional `PAYMENT_INTENT_SECRET`
 - Commit: `0c9836d` → merged via PR #12
 
-### Deploy prep (in progress)
-- `render.yaml` Blueprint: Postgres + Docker API (`/health`, migrate+seed on boot)
-- `frontend/vercel.json` + `docs/DEPLOY.md` (Vercel FE ↔ Render API CORS wiring)
-- Live URLs pending host account auth (Vercel / Render / Railway)
+### Deploy prep (merged PR #13)
+- `render.yaml` Blueprint (optional alt host) + `frontend/vercel.json` + `docs/DEPLOY.md`
+- Later superseded as primary by Railway live deploy
+
+### Production deploy (Railway — live)
+- Project `admission-hub` on Railway (Postgres + `api` + `web`)
+- API: https://api-production-f7fb.up.railway.app (`/health` 200, admin login 200)
+- UI: https://web-production-e4c95.up.railway.app
+- CORS `CLIENT_URL` → UI domain; UI `NEXT_PUBLIC_API_URL` → API `/api/v1`
+- Seeded QA logins active (`RUN_SEED=true`)
+- Operator docs: `docs/GETTING_STARTED.md`, `docs/DEPLOY.md`, `local/` (gitignored secrets)
+- Rotate `JWT_SECRET` in Railway if it was ever exposed in chat; keep copies only under `local/`
+
+### Operator docs + local secrets (23 Sep 2026)
+- Root `.gitignore`: ignore `local/*` except `README.md` + `*.example` / `*.example.md`; ignore real `.env` with `!.env.example` / `!.env.test`
+- `.gitattributes`: LF normalize + env.example text
+- Tracked templates: `local/backend.env.example`, `local/frontend.env.local.example`, `local/railway.notes.example.md`
+- Gitignored on machine: `local/backend.env`, `local/frontend.env.local`, `local/railway.notes.md`, `backend/.env`, `frontend/.env.local`
+- Guides: `docs/GETTING_STARTED.md` (clone→run), `docs/DEPLOY.md` (Railway primary + Render/Vercel alt), root `README.md`, `frontend/README.md`, `local/README.md`
+- Compose / `render.yaml` headers point at those docs
+- Seeded QA credentials documented in README / GETTING_STARTED / railway notes template (change before real users)
