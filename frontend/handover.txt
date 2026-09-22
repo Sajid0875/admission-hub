@@ -1,0 +1,233 @@
+WhiteDavid23
+Developer Handover Pack
+Partner Portal / Admission CRM System
+Version 1.0 | Prepared for Development Team
+
+1. Project Summary
+This document defines the complete handover package for the WhiteDavid23 Partner Portal. The system will
+be a role-based CRM and admission management platform for partner academies, communities, counselors,
+and the super admin team.
+The main objective is to help partners manage leads efficiently, improve follow-up discipline, track admissions,
+monitor commission, and increase overall conversion without confusion.
+This handover pack is designed so a developer can estimate, plan, build, and test the project with minimal
+back-and-forth.
+
+2. Business Objective
+Centralize all partner leads and admissions in one system.
+Allow each partner to access only their own data.
+Give the super admin full visibility and control.
+Improve admission conversion through reminders, status tracking, and ready-to-use sales tools.
+Create a future-ready platform that can later support automation, WhatsApp integration, payment
+gateway, and analytics.
+
+3. Scope of Work
+In Scope:
+Role-based login and access control.
+Dashboard for super admin and partner admin.
+Lead management, follow-up, admissions, and course tracking.
+Marketing assets, commission tracking, reporting, notifications, and account settings.
+Mobile responsive UI and exportable reports.
+
+4. User Roles and Access Control
+Role
+Super Admin
+
+Access Level
+
+Key Permissions
+
+Restrictions
+
+Full system access
+
+Approve partners, manage
+courses, assign leads,
+change permissions, view
+all reports, configure
+settings
+
+None
+
+Partner Admin
+
+Own partner data
+
+Team Member / Counselor
+
+Assigned records only
+
+Support (Optional)
+
+Service modules only
+
+Add/update own leads,
+admissions, follow-ups,
+commission view, own
+reports
+Work assigned leads,
+update notes, schedule
+follow-ups, change limited
+statuses
+Handle tickets, verification,
+onboarding assistance
+
+Cannot see other partners'
+data
+No full partner or system
+access
+No admission or
+commission control
+
+5. Recommended Modules
+Dashboard: Summary cards, today tasks, recent activity, funnel snapshot, target progress.
+Lead Management: Add lead, import leads, duplicate detection, lead score, status change, assigned owner.
+Follow-up Center: Pending follow-ups, reminders, call logs, WhatsApp logs, next action.
+Admissions: Pre-admission, fee discussed, partial/full payment, confirmed admission, canceled cases.
+Courses: Course catalog, syllabus, fee structure, brochure, demo video, FAQs.
+Marketing Center: Posters, captions, WhatsApp creatives, campaigns, testimonials.
+Commission Center: Earnings, pending payout, paid payout, bonuses, withdrawal requests.
+Reports & Analytics: Partner-wise, course-wise, source-wise, revenue, conversion, trend graphs.
+Notification Center: Lead alerts, reminders, approvals, announcements, payment updates.
+Account & Settings: Profile, password, security, theme, language, team members.
+
+6. Screen List / Sitemap
+Login / Forgot Password
+Role-based Dashboard
+Lead List
+Lead Details
+Add / Edit Lead
+Follow-up Calendar
+Admissions List
+Admission Details
+Courses List
+Course Details
+Marketing Assets Library
+Commission Summary
+Reports Dashboard
+Notifications
+Profile / Settings
+Partner Approval (Super Admin)
+User & Role Management (Super Admin)
+
+7. Core Workflows
+Lead Flow: Lead is created -> assigned -> contacted -> follow-up scheduled -> demo/shared brochure -> fee
+discussion -> admission confirmed.
+
+Partner Onboarding: Partner applies -> super admin verifies -> role is created -> partner gets access ->
+partner starts managing own leads.
+Commission Flow: Admission marked complete -> commission calculated -> pending amount shown ->
+payout processed -> history updated.
+Reporting Flow: System aggregates lead and admission data -> reports are filtered by date/course/partner
+-> export available.
+
+8. Functional Requirements
+The system shall support secure login with role-based authorization.
+The system shall allow super admin to create, approve, suspend, and manage partners.
+The system shall allow partner admins to manage only their own records.
+The system shall support lead creation, editing, assignment, filtering, and search.
+The system shall allow follow-up scheduling with due dates and status tracking.
+The system shall support admission status updates with payment stages.
+The system shall display course information and downloadable marketing assets.
+The system shall calculate commission based on configured rules.
+The system shall generate reports with filters by date, partner, course, and status.
+The system shall be mobile responsive.
+
+9. Non-Functional Requirements
+Fast load time on mobile data and average internet connections.
+Secure password handling and session management.
+Scalable architecture for future automation and AI features.
+Clean UI with clear hierarchy and minimum clicks.
+Audit logs for sensitive actions such as lead transfer and approval.
+Backup and restore strategy for database safety.
+
+10. Validation and Business Rules
+Mobile number should be validated before save.
+Duplicate leads should be flagged.
+Required fields should not be left blank.
+Only valid status values should be allowed.
+Only authorized roles can view commission and partner management screens.
+Date-based reminders should follow the selected timezone and due date.
+
+11. UI / UX Direction
+Modern admin dashboard style.
+Left sidebar navigation with collapsible sections.
+Top summary cards and quick action buttons.
+Professional spacing, readable typography, and responsive tables.
+Color-coded status badges for leads and admissions.
+Keep important actions visible within one or two clicks.
+
+12. Data Fields by Module
+Lead: Name, phone, WhatsApp, email, city, course interest, source, budget, priority, status, follow-up date,
+assigned to, notes.
+Partner: Partner name, academy name, owner name, mobile, email, role, commission type, status, joining
+date.
+Admission: Student name, course, fee, payment mode, payment status, joining date, remarks, documents.
+Course: Course name, duration, fee, description, syllabus,
+
+13. Super Admin Exclusive Features
+Partner approval and rejection.
+Global lead transfer.
+Permission and role mapping.
+All partner analytics.
+System announcements.
+Export/import of records.
+Audit logs and activity tracking.
+Fraud and duplicate detection.
+
+14. Phase Plan / Future Scope
+Phase
+Phase 1
+Phase 2
+Phase 3
+Phase 4
+Phase 5
+
+Features
+Login, roles, dashboard, leads,
+follow-ups, admissions, reports
+Marketing center, commission
+module, notifications, export tools
+WhatsApp integration, payment
+gateway, automation, reminders
+AI lead scoring, predictions, smart
+suggestions, analytics
+LMS, quizzes, certificates, mobile
+app, franchise support
+
+Priority
+Must-have
+High
+Medium
+Future
+Advanced future
+
+15. Acceptance Criteria
+All roles should work as defined.
+Partner should only see own data.
+Search, filter, and status updates must work without errors.
+Dashboard cards should reflect live counts.
+Reports should be exportable.
+Mobile layout should be usable on common Android screen sizes.
+
+16. What the Developer Should Receive from You
+Logo and brand colors.
+Reference screenshots and preferred layout.
+Course list and fee details.
+Partner list and role mapping.
+
+Sample leads and dummy data.
+Final approval on phase priorities.
+
+17. Recommended Technology Stack
+Frontend: Next.js or React + Tailwind CSS
+Backend: Node.js + Express Js
+Database: MongoDB (NOSQL) or PostgreSQL(SQL)
+Authentication: JWT with role-based access control
+Hosting: Vercel/Netlify for frontend, Render/AWS/VPS for backend
+
+18. Final Note
+This handover pack is intended to reduce confusion, speed up development, and make the final product
+professional from day one. The more clearly the roles, flows, and field definitions are shared, the better the
+developer can build the system.
+
+

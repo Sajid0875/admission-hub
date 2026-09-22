@@ -482,7 +482,7 @@
 - **Mocks Gate**: `NEXT_PUBLIC_USE_MOCKS=false` (live API by default; mocks only when explicitly enabled)
 - **Local Ports**: Backend `:4000`, Frontend `:3000`, PostgreSQL `:5432`
 - **Status**: **Local full-stack integration complete** — Phase 1 + Phase 2 FE surfaces wired live (courses, marketing, notifications, commission rules); role workflows verified against the backend
-- **Git note (23 Sep 2026)**: Backend/docs commit on monorepo `dev_Sohaim`; frontend lives in nested checkout on `sajid/frontend-phase-1` (same remote) — commit frontend changes there separately
+- **Git note (23 Sep 2026)**: Frontend un-nested into monorepo on `dev_Sohaim` (nested `frontend/.git` removed). Prior FE work also pushed on `sajid/frontend-phase-1` (`3ecef0b`). Prefer committing FE on `dev_Sohaim` going forward.
 
 ### Local QA Login Credentials (from `npm run prisma:seed`)
 
