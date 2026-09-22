@@ -47,15 +47,19 @@ const EnvSchema = z.object({
         .default(60_000),
     FOLLOWUP_DUE_SOON_MINUTES: z.coerce.number().int().positive().default(60),
 
-    // WhatsApp — stub by default; set PROVIDER=meta + credentials for live sends.
+    // WhatsApp — stub by default; set PROVIDER=meta|twilio + credentials for live sends.
     WHATSAPP_ENABLED: z
         .enum(['true', 'false'])
         .default('false')
         .transform((v) => v === 'true'),
-    WHATSAPP_PROVIDER: z.enum(['stub', 'meta']).default('stub'),
+    WHATSAPP_PROVIDER: z.enum(['stub', 'meta', 'twilio']).default('stub'),
     WHATSAPP_META_ACCESS_TOKEN: z.string().default(''),
     WHATSAPP_META_PHONE_NUMBER_ID: z.string().default(''),
     WHATSAPP_META_API_VERSION: z.string().default('v21.0'),
+    WHATSAPP_TWILIO_ACCOUNT_SID: z.string().default(''),
+    WHATSAPP_TWILIO_AUTH_TOKEN: z.string().default(''),
+    // E.164 or whatsapp:+E164 — sandbox or approved business sender
+    WHATSAPP_TWILIO_FROM: z.string().default(''),
 });
 
 const parsed = EnvSchema.safeParse(process.env);
