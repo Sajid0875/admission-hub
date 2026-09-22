@@ -617,9 +617,9 @@ npm run prisma:seed
 **Still optional / not required for local integration:**
 - Refresh tokens
 - Redis-backed job queue (in-process follow-up reminders ship for MVP; Redis still optional at scale)
-- PDF export (CSV only today)
+- PDF export (CSV + PDF on `/reports/export`)
 - Kubernetes manifests (Docker Compose ships for local)
-- Real WhatsApp provider (Meta/Twilio) — Meta Cloud API wired; Twilio still future
+- Real WhatsApp provider (Meta/Twilio) — Meta + Twilio wired; stub remains default
 - Aikido security scan MCP (not configured in this environment)
 
 **Done after PR #2 merge (23 Sep 2026):**
@@ -631,6 +631,7 @@ npm run prisma:seed
 - [x] In-process follow-up reminder scanner (`FOLLOWUP_*` env) with idempotent notifications
 - [x] WhatsApp adapter stub (`WHATSAPP_ENABLED`, logs only)
 - [x] WhatsApp Meta Cloud API provider (`WHATSAPP_PROVIDER=meta` + token/phone-number-id)
+- [x] WhatsApp Twilio provider (`WHATSAPP_PROVIDER=twilio` + SID/token/from)
 - [x] `GET /commissions/summary` + FE live wiring (replaces client-side list derive)
 - [x] Docker Compose (Postgres + API + FE) + live E2E script on main
 
@@ -823,8 +824,9 @@ Twilio WhatsApp provider (`WHATSAPP_PROVIDER=twilio`): **23 Sep 2026**.
 - Follow-up reminder job already calls `whatsapp.sendText` — picks up live adapter automatically
 - Commit: `0ea5490` → merged via PR #10
 
-### Twilio WhatsApp provider (this commit → PR)
+### Twilio WhatsApp provider (PR #11 merged)
 - `WHATSAPP_PROVIDER=twilio` + `WHATSAPP_TWILIO_ACCOUNT_SID` / `AUTH_TOKEN` / `FROM`
 - Form-encoded POST to Twilio Messages API via native `fetch` (no Twilio SDK)
 - Addresses normalized to `whatsapp:+E164`; missing creds → stub fallback
-- Unit tests extended for Twilio send + error paths
+- Unit tests extended for Twilio send + error paths (**10/10** messaging suite)
+- Commit: `24ebbe1` → merged via PR #11
