@@ -2,16 +2,18 @@
  * whatsapp.ts - Messaging adapter for WhatsApp.
  *
  * Providers:
- *   - stub  — logs only (default; safe for local/CI)
- *   - meta  — Meta Cloud API when token + phone-number-id are set
+ *   - stub    — logs only (default; safe for local/CI)
+ *   - meta    — Meta Cloud API when token + phone-number-id are set
+ *   - twilio  — Twilio WhatsApp when account SID + token + from are set
  *
- * Selection: WHATSAPP_PROVIDER + credentials. Missing Meta creds fall back to stub.
+ * Selection: WHATSAPP_PROVIDER + credentials. Missing live creds fall back to stub.
  */
 
 import { randomUUID } from 'node:crypto';
 import { logger } from '../../config/logger.js';
 import { env } from '../../config/env.js';
 import { createMetaWhatsAppAdapter } from './whatsappMeta.js';
+import { createTwilioWhatsAppAdapter } from './whatsappTwilio.js';
 import type {
     WhatsAppAdapter,
     WhatsAppSendInput,
@@ -75,6 +77,26 @@ export const createWhatsAppAdapter = (): WhatsAppAdapter => {
             'whatsapp adapter: Meta Cloud API',
         );
         return createMetaWhatsAppAdapter();
+    }
+
+    if (env.WHATSAPP_PROVIDER === 'twilio') {
+        const hasCreds =
+            env.WHATSAPP_TWILIO_ACCOUNT_SID.length > 0 &&
+            env.WHATSAPP_TWILIO_AUTH_TOKEN.length > 0 &&
+            env.WHATSAPP_TWILIO_FROM.length > 0;
+
+        if (!hasCreds) {
+            logger.warn(
+                'WHATSAPP_PROVIDER=twilio but account SID/token/from missing — using stub',
+            );
+            return whatsappStub;
+        }
+
+        logger.info(
+            { provider: 'whatsapp-twilio' },
+            'whatsapp adapter: Twilio',
+        );
+        return createTwilioWhatsAppAdapter();
     }
 
     return whatsappStub;

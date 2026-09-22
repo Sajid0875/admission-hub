@@ -3,8 +3,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { toWhatsAppDigits } from '../whatsappPhone.js';
+import { toWhatsAppDigits, toWhatsAppE164 } from '../whatsappPhone.js';
 import { createMetaWhatsAppAdapter } from '../whatsappMeta.js';
+import { createTwilioWhatsAppAdapter } from '../whatsappTwilio.js';
 import { createWhatsAppAdapter, whatsappStub } from '../whatsapp.js';
 
 describe('toWhatsAppDigits', () => {
@@ -16,6 +17,13 @@ describe('toWhatsAppDigits', () => {
 
   it('returns empty for garbage', () => {
     expect(toWhatsAppDigits('abc')).toBe('');
+  });
+});
+
+describe('toWhatsAppE164', () => {
+  it('prefixes digits with +', () => {
+    expect(toWhatsAppE164('+91 98765 43210')).toBe('+919876543210');
+    expect(toWhatsAppE164('abc')).toBe('');
   });
 });
 
@@ -126,5 +134,77 @@ describe('createMetaWhatsAppAdapter', () => {
     expect(result.ok).toBe(false);
     expect(result.reason).toBe('invalid_recipient');
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('createTwilioWhatsAppAdapter', () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(JSON.stringify({ sid: 'SMxxxxxxxx', status: 'queued' }), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.unstubAllGlobals();
+  });
+
+  it('POSTs form-encoded message to Twilio and returns sid', async () => {
+    const adapter = createTwilioWhatsAppAdapter({
+      enabled: true,
+      accountSid: 'ACtest',
+      authToken: 'secret',
+      fromNumber: '+14155238886',
+    });
+
+    const result = await adapter.sendText({
+      to: '+91 98765 43210',
+      body: 'Twilio reminder',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.providerMessageId).toBe('SMxxxxxxxx');
+    expect(fetch).toHaveBeenCalled();
+    const [url, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    expect(url).toContain('api.twilio.com/2010-04-01/Accounts/ACtest/Messages.json');
+    expect((init.headers as Record<string, string>).Authorization).toMatch(/^Basic /);
+    const form = new URLSearchParams(String(init.body));
+    expect(form.get('From')).toBe('whatsapp:+14155238886');
+    expect(form.get('To')).toBe('whatsapp:+919876543210');
+    expect(form.get('Body')).toBe('Twilio reminder');
+  });
+
+  it('returns ok:false on Twilio API error', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({ code: 21211, message: 'Invalid To phone number' }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    );
+
+    const adapter = createTwilioWhatsAppAdapter({
+      enabled: true,
+      accountSid: 'ACtest',
+      authToken: 'secret',
+      fromNumber: '+14155238886',
+    });
+
+    const result = await adapter.sendText({ to: '+1000', body: 'x' });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain('Invalid To');
   });
 });

@@ -77,9 +77,10 @@ Interactive API docs: http://localhost:4000/api/v1/docs (OpenAPI JSON: `/api/v1/
 Follow-up reminders can fan out WhatsApp text via an adapter:
 
 - Default: `WHATSAPP_PROVIDER=stub` (logs only; safe for local/CI)
-- Live: set `WHATSAPP_ENABLED=true`, `WHATSAPP_PROVIDER=meta`, plus Meta Cloud API `WHATSAPP_META_ACCESS_TOKEN` and `WHATSAPP_META_PHONE_NUMBER_ID`
+- Meta: `WHATSAPP_ENABLED=true`, `WHATSAPP_PROVIDER=meta`, plus `WHATSAPP_META_ACCESS_TOKEN` and `WHATSAPP_META_PHONE_NUMBER_ID`
+- Twilio: `WHATSAPP_ENABLED=true`, `WHATSAPP_PROVIDER=twilio`, plus `WHATSAPP_TWILIO_ACCOUNT_SID`, `WHATSAPP_TWILIO_AUTH_TOKEN`, and `WHATSAPP_TWILIO_FROM`
 
-Missing Meta credentials fall back to the stub with a warning.
+Missing live credentials fall back to the stub with a warning.
 
 ## Roles
 
