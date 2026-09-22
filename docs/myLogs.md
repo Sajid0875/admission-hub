@@ -618,7 +618,7 @@ npm run prisma:seed
 - Refresh tokens
 - Redis-backed job queue (in-process follow-up reminders ship for MVP; Redis still optional at scale)
 - PDF export (CSV only today)
-- Docker / Kubernetes manifests
+- Kubernetes manifests (Docker Compose ships for local)
 - Real WhatsApp provider (Meta/Twilio) — stub only today
 - Aikido security scan MCP (not configured in this environment)
 
@@ -631,6 +631,7 @@ npm run prisma:seed
 - [x] In-process follow-up reminder scanner (`FOLLOWUP_*` env) with idempotent notifications
 - [x] WhatsApp adapter stub (`WHATSAPP_ENABLED`, logs only)
 - [x] `GET /commissions/summary` + FE live wiring (replaces client-side list derive)
+- [x] Docker Compose (Postgres + API + FE) + live E2E script on main
 
 ---
 
@@ -778,3 +779,4 @@ Core role E2E + backend module suite: **23 Sep 2026**.
 Phase-2 FE polish (courses, marketing, notifications, commission rules): **23 Sep 2026**.  
 PR #2 merged to `main`; hardening (CI, rate limits, OpenAPI) + Phase-3 reminders/WhatsApp stub: **23 Sep 2026**.  
 `GET /commissions/summary` API + FE live wiring; OpenAPI JSON comment fix (tsx): **23 Sep 2026**.
+Live E2E script + Docker Compose local stack: **23 Sep 2026**.
