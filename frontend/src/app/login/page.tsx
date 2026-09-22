@@ -107,7 +107,7 @@ function LoginForm() {
         password,
       });
 
-      setAuth(res.user, res.token);
+      setAuth(res.user, res.token, res.refreshToken);
 
       addToast({
         type: "success",

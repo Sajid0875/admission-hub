@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Shield, Building2, Globe, LogOut } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { authService } from "@/services/api/authService";
 import { getAuthorizedNavItems } from "./navigationConfig";
 
 interface SidebarProps {
@@ -19,10 +20,12 @@ export function Sidebar({ onCloseMobile }: SidebarProps) {
   const authorizedItems = getAuthorizedNavItems(user?.role, user?.permissions);
 
   const handleSignOut = () => {
-    logout();
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
-    }
+    void authService.logout().finally(() => {
+      logout();
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+    });
   };
 
   return (

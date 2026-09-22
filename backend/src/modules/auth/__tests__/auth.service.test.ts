@@ -164,6 +164,81 @@ describe('authService.login', () => {
     expect(result.user.role).toBe('PARTNER_ADMIN');
     expect(result.user.email).toBe(TEST_PARTNER_ADMIN.email);
   });
+
+  it('returns a refreshToken and persists a hashed row', async () => {
+    const result = await authService.login({
+      email: TEST_SUPER_ADMIN.email,
+      password: TEST_SUPER_ADMIN.password,
+    });
+
+    expect(result.refreshToken).toBeTypeOf('string');
+    expect(result.refreshToken.length).toBeGreaterThan(20);
+
+    const rows = await prisma.refreshToken.findMany();
+    expect(rows).toHaveLength(1);
+    // Raw token must never be stored — only the hash
+    expect(rows[0]?.token).not.toBe(result.refreshToken);
+  });
+});
+
+// --------------------------------------------------
+// refresh / logout
+// --------------------------------------------------
+
+describe('authService.refresh', () => {
+  it('rotates tokens and invalidates the old refresh token', async () => {
+    const loginResult = await authService.login({
+      email: TEST_SUPER_ADMIN.email,
+      password: TEST_SUPER_ADMIN.password,
+    });
+
+    const refreshed = await authService.refresh(loginResult.refreshToken);
+
+    expect(refreshed.token).toBeTypeOf('string');
+    expect(refreshed.refreshToken).toBeTypeOf('string');
+    expect(refreshed.refreshToken).not.toBe(loginResult.refreshToken);
+
+    await expect(
+      authService.refresh(loginResult.refreshToken),
+    ).rejects.toMatchObject({
+      statusCode: 401,
+      message: 'Invalid refresh token',
+    });
+  });
+
+  it('throws Unauthorized for a garbage refresh token', async () => {
+    await expect(
+      authService.refresh('not-a-real-refresh-token'),
+    ).rejects.toMatchObject({
+      statusCode: 401,
+      message: 'Invalid refresh token',
+    });
+  });
+});
+
+describe('authService.logout', () => {
+  it('revokes the refresh token so it cannot be reused', async () => {
+    const loginResult = await authService.login({
+      email: TEST_SUPER_ADMIN.email,
+      password: TEST_SUPER_ADMIN.password,
+    });
+
+    await authService.logout(loginResult.refreshToken);
+
+    expect(await prisma.refreshToken.count()).toBe(0);
+
+    await expect(
+      authService.refresh(loginResult.refreshToken),
+    ).rejects.toMatchObject({
+      statusCode: 401,
+    });
+  });
+
+  it('is idempotent for unknown tokens', async () => {
+    await expect(
+      authService.logout('already-gone-token'),
+    ).resolves.toBeUndefined();
+  });
 });
 
 // --------------------------------------------------

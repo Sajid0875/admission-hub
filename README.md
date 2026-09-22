@@ -64,6 +64,12 @@ cd backend && npm run test:e2e
 cd frontend && npm run test:smoke
 ```
 
+## Auth tokens
+
+Login returns a short-lived JWT (`token`) plus an opaque `refreshToken` (hashed in DB).  
+`POST /api/v1/auth/refresh` rotates the pair; `POST /api/v1/auth/logout` revokes the refresh token.  
+Defaults: access `15m`, refresh `30d` (`JWT_EXPIRES_IN` / `JWT_REFRESH_EXPIRES_IN`).
+
 ## Roles
 
 - Super Admin

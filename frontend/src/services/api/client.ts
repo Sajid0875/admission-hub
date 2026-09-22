@@ -120,11 +120,57 @@ const axiosInstance: AxiosInstance = axios.create({
   },
 });
 
+const ACCESS_KEY = "auth_token";
+const REFRESH_KEY = "auth_refresh_token";
+const USER_KEY = "auth_user";
+
+type RetriableConfig = AxiosRequestConfig & { _retry?: boolean };
+
+let refreshInFlight: Promise<string | null> | null = null;
+
+/** Attempt a single shared refresh so concurrent 401s don't race-rotate. */
+async function refreshAccessToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  const refreshToken = localStorage.getItem(REFRESH_KEY);
+  if (!refreshToken) return null;
+
+  try {
+    // Use bare axios (not the interceptors instance) to avoid recursion
+    const res = await axios.post<{ token: string; refreshToken: string }>(
+      `${API_BASE_URL}/auth/refresh`,
+      { refreshToken },
+      { timeout: 15000 }
+    );
+    localStorage.setItem(ACCESS_KEY, res.data.token);
+    localStorage.setItem(REFRESH_KEY, res.data.refreshToken);
+    return res.data.token;
+  } catch {
+    return null;
+  }
+}
+
+function clearSessionAndNotifyUnauthorized(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(ACCESS_KEY);
+  localStorage.removeItem(REFRESH_KEY);
+  localStorage.removeItem(USER_KEY);
+  window.dispatchEvent(new CustomEvent("auth:unauthorized"));
+}
+
+function isAuthPublicPath(url?: string): boolean {
+  if (!url) return false;
+  return (
+    url.includes("/auth/login") ||
+    url.includes("/auth/refresh") ||
+    url.includes("/auth/logout")
+  );
+}
+
 // Request Interceptor: Attach Auth Bearer Token
 axiosInstance.interceptors.request.use(
   (config) => {
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("auth_token");
+      const token = localStorage.getItem(ACCESS_KEY);
       if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -136,19 +182,54 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Response Interceptor: Normalize Responses & Errors
+// Response Interceptor: refresh-on-401, then normalize errors
 axiosInstance.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
   },
-  (error: AxiosError<ApiErrorResponse>) => {
+  async (error: AxiosError<ApiErrorResponse>) => {
+    const original = error.config as RetriableConfig | undefined;
+    const status = error.response?.status;
+
+    // Silent refresh once per request when access JWT expired
+    if (
+      status === 401 &&
+      original &&
+      !original._retry &&
+      !isAuthPublicPath(original.url) &&
+      typeof window !== "undefined"
+    ) {
+      original._retry = true;
+
+      if (!refreshInFlight) {
+        refreshInFlight = refreshAccessToken().finally(() => {
+          refreshInFlight = null;
+        });
+      }
+
+      const newToken = await refreshInFlight;
+      if (newToken) {
+        original.headers = {
+          ...original.headers,
+          Authorization: `Bearer ${newToken}`,
+        };
+        return axiosInstance.request(original);
+      }
+
+      clearSessionAndNotifyUnauthorized();
+    }
+
     const normalized = normalizeApiError(error);
 
-    // Handle token expiry / 401 session clearing
-    if (normalized.statusCode === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("auth_token");
-      localStorage.removeItem("auth_user");
-      window.dispatchEvent(new CustomEvent("auth:unauthorized"));
+    // Hard 401 after refresh failed (or no refresh token) — already cleared above
+    // when refresh path ran. For public auth paths just reject.
+    if (
+      normalized.statusCode === 401 &&
+      typeof window !== "undefined" &&
+      !isAuthPublicPath(original?.url) &&
+      !original?._retry
+    ) {
+      clearSessionAndNotifyUnauthorized();
     }
 
     // Handle 403 Forbidden

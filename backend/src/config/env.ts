@@ -25,7 +25,11 @@ const EnvSchema = z.object({
             message: 'JWT_SECRET is still the placeholder value. Generate a real secret.',
         }),
 
-    JWT_EXPIRES_IN: z.string().default('7d'),
+    // Access JWT lifetime. Prefer short values (e.g. 15m) when refresh tokens are used.
+    JWT_EXPIRES_IN: z.string().default('15m'),
+
+    // Opaque refresh token lifetime (stored hashed in refresh_tokens).
+    JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
 
     LOG_LEVEL: z
         .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
